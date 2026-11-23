@@ -2427,15 +2427,42 @@ export function createWorkspace(container, adapter, options = {}) {
       field('내용',textarea('text',item.text,{ ...required,maxlength:12000,autofocus:Boolean(item.id) })),
       toggle('확인된 사실이면 채팅에도 공개',check('announce'))];
     const notes = investigatorNotes(state).slice().reverse();
-    const record = (item) => el('details', { class:'record','data-disclosure-id':item.id },el('summary', {}, `${noteLabels[item.kind]} · ${item.text.slice(0,70)}`),
+    const record = (item) => el('details', { class:'record','data-disclosure-id':item.id },el('summary', {}, `${noteLabels[item.kind]}${item.aiOff ? ' · AI가 안 봐요' : ''} · ${item.text.slice(0,70)}`),
       el('p',{ class:'message-text' },item.text),row(
         button('기록 수정',() => messageDialog('조사 노트 수정','수정 저장',noteFields(item),(values) => saveNote(values,item.id)),{ 'aria-haspopup':'dialog' }),
         button('기록 삭제', () => {
           if (window.confirm('이 기록을 삭제할까요?')) action((next) => { next.notes = next.notes.filter((other) => other.id !== item.id); })();
         })));
     const automatic = notes.filter((item) => item.source);
-    return [section('AI가 알게 된 내용',automatic.length ? automatic.map(record) : note('AI 답변 뒤 새로 알게 된 내용과 가설이 자동으로 갱신됩니다.')),
+    return [aiNotePicker(notes),section('AI가 알게 된 내용',automatic.length ? automatic.map(record) : note('AI 답변 뒤 새로 알게 된 내용과 가설이 자동으로 갱신됩니다.')),
       section('직접 기록',form((values) => saveNote(values),noteFields(),'기록 추가'),notes.filter((item) => !item.source).map(record))];
+  }
+
+  /* Which notes the AI remembers: facts, AI summaries, hypotheses and session summaries, newest first. An unticked
+     note stays in the notebook but is left out of every AI turn until it is ticked again. */
+  function aiNotePicker(notes) {
+    const shown = notes.filter((item) => ['fact','learned','hypothesis','summary'].includes(item.kind));
+    if (!shown.length) return null;
+    const kept = shown.filter((item) => !item.aiOff).length;
+    const apply = (ids) => (next) => {
+      for (const item of next.notes) if (shown.some((other) => other.id === item.id)) {
+        if (ids === null || ids.has(item.id)) delete item.aiOff;
+        else item.aiOff = true;
+      }
+    };
+    // The form already runs inside run(), so it saves directly; the reset button goes through action().
+    const saveNow = async (ids) => { await transact(apply(ids)); announce('AI가 기억할 조사 노트를 저장했어요.','ok'); };
+    const boxes = shown.map((item) => {
+      const box = check('noteId',!item.aiOff);
+      box.value = item.id;
+      return el('label',{ class:'preset-section' },box,
+        el('span',{ class:'preset-section-name' },item.text.slice(0,90),el('small',{},noteLabels[item.kind].split(' · ')[0])));
+    });
+    return el('details',{ class:'record','data-disclosure-id':'ai-note-picker' },
+      el('summary',{},`AI가 기억할 조사 노트 · ${kept}/${shown.length}개`),
+      note('맨 위가 최신이에요. 체크한 노트만 AI 답변에 보내요. 체크를 풀어도 노트는 지워지지 않아요. 세션 요약은 체크한 것 중 최근 5개까지 보내요.'),
+      pickerForm((values) => saveNow(new Set(values.getAll('noteId').map(String))),boxes,'고른 노트 저장',
+        button('전부 기억',() => action(apply(null),'모든 조사 노트를 AI가 기억해요.')(),{ disabled:!!running || kept === shown.length })));
   }
 
   function privatePanel() {

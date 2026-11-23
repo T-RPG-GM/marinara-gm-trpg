@@ -396,7 +396,7 @@ export function secretBriefing(state) {
 }
 
 export function sessionSummaries(state, limit = 5) {
-  return investigatorNotes(state).filter((item) => item.kind === 'summary').slice(-limit).map(({ text, session }) => ({ session, text }));
+  return investigatorNotes(state).filter((item) => item.kind === 'summary' && !item.aiOff).slice(-limit).map(({ text, session }) => ({ session, text }));
 }
 
 // Public log of one session, in the shape the summary model reads.
@@ -721,7 +721,7 @@ export function turnPayload(state, personaId) {
   }).filter(Boolean);
   const instructions = state.privateLog.filter((entry) => entry.type === 'instruction' && !entry.used);
   const handouts = state.handouts.filter((item) => item.public === true).map(({ id, title, description, text, assetId }) => ({ id, title, description, text, assetId, evidence:`handout-${id}` }));
-  const facts = investigatorNotes(state).filter((item) => ['fact','learned','hypothesis'].includes(item.kind)).map((item) => ({
+  const facts = investigatorNotes(state).filter((item) => ['fact','learned','hypothesis'].includes(item.kind) && !item.aiOff).map((item) => ({
     kind:item.kind, text:item.text,
     ...(canReviseNote(item) ? { noteId:item.id } : {}),
     ...(item.keeperEdited ? { keeperEdited:true } : {}),
