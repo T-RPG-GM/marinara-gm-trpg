@@ -298,11 +298,7 @@
   letter-spacing: .01em;
 }
 .coc7-game-workspace .message.persona {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 2.5rem;
-  align-items: start;
   align-self: flex-end;
-  gap: .65rem;
   width: fit-content;
   max-width: min(90%,39rem);
   border: 0;
@@ -328,11 +324,7 @@
 }
 .coc7-game-workspace .message.persona .message-head button { text-align: right; }
 .coc7-game-workspace .message-text + .investigator-action { margin-top: .55rem; }
-.coc7-game-workspace .message.persona > .avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-color: #000;
-}
+.coc7-game-workspace .persona-bubble .message-head .avatar { width: 2rem; height: 2.15rem; flex: none; }
 .coc7-game-workspace .persona-initial {
   display: grid;
   place-items: center;

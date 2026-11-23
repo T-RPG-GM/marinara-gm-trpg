@@ -1107,12 +1107,14 @@ export function createWorkspace(container, adapter, options = {}) {
       ? sourceImage(entry.personaAvatar,'',{ class:'avatar' })
       : el('span',{ class:'avatar persona-initial','aria-hidden':true },Array.from(entry.speaker?.trim() || '페')[0]));
     const pickable = choosingScenes && isIllustrationScene(entry);
+    const speakerName = entry.type === 'investigator' && (entry.characterId ?? 'local') === (state.settings.cardId || 'local')
+      ? button(entry.speaker || state.sheet.name,openSheet,{ class:'investigator-name',title:'조사자 시트 열기' })
+      : canOpenPersona ? button(entry.speaker,openPersonaName,{ class:'investigator-name',title:'페르소나 시트 열기' })
+        : el('strong', {}, entry.speaker || roleLabels[entry.type]);
+    // The persona's photo sits beside the name, mirrored to the right like the card itself.
     const header = entry.type !== 'scene' && el('div',{ class:'message-head' },
-      row(entry.type === 'investigator' ? portrait(entry,'sticker') : profileId ? assetImage(profileId,'',{ class:'avatar' }) : null,
-        entry.type === 'investigator' && (entry.characterId ?? 'local') === (state.settings.cardId || 'local')
-          ? button(entry.speaker || state.sheet.name,openSheet,{ class:'investigator-name',title:'조사자 시트 열기' })
-          : canOpenPersona ? button(entry.speaker,openPersonaName,{ class:'investigator-name',title:'페르소나 시트 열기' })
-            : el('strong', {}, entry.speaker || roleLabels[entry.type])),
+      personaAvatar ? row(speakerName,personaAvatar)
+        : row(entry.type === 'investigator' ? portrait(entry,'sticker') : profileId ? assetImage(profileId,'',{ class:'avatar' }) : null,speakerName),
       // The answer's token chip sits at the right edge, beside the reroll button.
       el('div',{ class:'message-head-actions' },
         entry.type === 'investigator' ? usageChip(entry) : null,
@@ -1136,7 +1138,7 @@ export function createWorkspace(container, adapter, options = {}) {
     const tools = !choosingScenes && isIllustrationScene(entry) ? messageTools(entry) : null;
     const message = el('article',{ id:`coc7-message-${entry.id}`,tabindex:-1,
       class:`message ${entry.type}${pickable ? ' scene-pickable' : ''}${selectedScenes.has(entry.id) ? ' selected-scene' : ''}`,'data-entry-id':entry.id },
-      personaAvatar ? [el('div',{ class:'persona-bubble' },tools,header,body),personaAvatar] : [tools,header,body]);
+      personaAvatar ? el('div',{ class:'persona-bubble' },tools,header,body) : [tools,header,body]);
     if (pickable) {
       for (const control of message.querySelectorAll('button')) control.inert = true;
       message.append(scenePicker(entry));
