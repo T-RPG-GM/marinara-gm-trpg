@@ -319,6 +319,25 @@ export async function cocGameRoutes(app: FastifyInstance) {
   const running = new Set<string>();
   const saving = new Set<string>();
 
+  // The game chat lists its investigator card as its character, so the home screen, recent chats and the
+  // sidebar show the card's picture. Changed only when the picked card changes.
+  async function syncChatCard(chatId: string, cardId: unknown) {
+    const chat = await chats.getById(chatId);
+    if (!chat) return;
+    const card = typeof cardId === "string" && cardId ? await characters.getById(cardId) : null;
+    const wanted = card ? [card.id] : [];
+    let current: unknown = chat.characterIds;
+    if (typeof current === "string") {
+      try {
+        current = JSON.parse(current);
+      } catch {
+        current = [];
+      }
+    }
+    if (JSON.stringify(Array.isArray(current) ? current : []) === JSON.stringify(wanted)) return;
+    await chats.update(chatId, { characterIds: wanted });
+  }
+
   // The lorebooks the Keeper picked for the investigator, or else the bot card's own, run through Marinara's
   // keyword activation over the recent story, so an entry is sent only when the scene calls for it
   // (plus entries the author marked constant).
@@ -436,7 +455,13 @@ export async function cocGameRoutes(app: FastifyInstance) {
 
   app.get<{ Params: { id: string } }>("/:id/coc7/state", async (request, reply) => {
     if (!(await requireGame(request, reply))) return;
-    return { state: await readCampaign(directoryFor(request.params.id)) };
+    const state = await readCampaign(directoryFor(request.params.id));
+    // A game saved before the card link existed gets it on its next opening.
+    if (state)
+      void syncChatCard(request.params.id, state.settings.cardId).catch((error: unknown) =>
+        logger.warn(error, "CoC chat card link sync failed"),
+      );
+    return { state };
   });
 
   app.put<{ Params: { id: string } }>("/:id/coc7/state", { bodyLimit: 100_000_000 }, async (request, reply) => {
@@ -496,6 +521,9 @@ export async function cocGameRoutes(app: FastifyInstance) {
       for (const key of oldAssets.keys()) if (!assets.has(key)) await unlink(join(directory, key)).catch(() => {});
       // After the save, in the background: the memory library reads this copy of the public story.
       void syncMemoryMirror(id, state).catch((error: unknown) => logger.warn(error, "CoC memory mirror sync failed"));
+      void syncChatCard(id, state.settings.cardId).catch((error: unknown) =>
+        logger.warn(error, "CoC chat card link sync failed"),
+      );
       return { revision: state.revision };
     } finally {
       saving.delete(id);
