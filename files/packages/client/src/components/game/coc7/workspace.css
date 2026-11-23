@@ -304,34 +304,30 @@
   align-self: flex-end;
   gap: .65rem;
   width: fit-content;
-  max-width: min(94%,24rem);
+  max-width: min(90%,39rem);
   border: 0;
   background: transparent;
   box-shadow: none;
 }
+/* The persona speaks from the right in the same card as the investigator: action in a grey box, speech below. */
 .coc7-game-workspace .persona-bubble {
+  --message-band: var(--coc-band);
+  --message-band-end: color-mix(in srgb, var(--message-band) 65%, var(--coc-photo-accent));
   position: relative;
   min-width: 0;
-  border: 1px solid #1f1f1f;
-  border-inline-end-width: 3px;
-  border-radius: var(--coc-radius) .2rem var(--coc-radius) var(--coc-radius);
-  background: #fff;
-  color: #1f1f1f;
+  border: 1px solid var(--coc-stroke);
+  border-radius: var(--coc-radius);
+  background: var(--coc-card);
+  color: var(--coc-text);
   box-shadow: var(--coc-shadow);
 }
-.coc7-game-workspace .message.persona .message-head {
+.coc7-game-workspace .persona-bubble > .message-head {
   justify-content: flex-end;
-  min-height: 1.9rem;
-  padding: .33rem .62rem 0;
-  color: #000;
-  background: transparent;
-  font-size: .8rem;
+  border-radius: calc(var(--coc-radius) - 1px) calc(var(--coc-radius) - 1px) 0 0;
   text-align: right;
 }
 .coc7-game-workspace .message.persona .message-head button { text-align: right; }
-.coc7-game-workspace .message.persona .message-body { padding: .24rem .62rem .48rem; }
-.coc7-game-workspace .message.persona .message-text { line-height: 1.5; }
-.coc7-game-workspace .message.persona .persona-bubble .quiet { color: #555; }
+.coc7-game-workspace .message-text + .investigator-action { margin-top: .55rem; }
 .coc7-game-workspace .message.persona > .avatar {
   width: 2.5rem;
   height: 2.5rem;

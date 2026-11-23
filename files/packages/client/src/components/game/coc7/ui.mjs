@@ -124,6 +124,24 @@ function investigatorMessageParts(entry) {
   return prefix ? { action:paragraphs.join(''),dialogue:text.slice(prefix.length + 2) } : null;
 }
 
+// A persona line split like an investigator answer: *starred* text is action, the rest is speech.
+// An /em line is action as a whole.
+function personaMessageParts(entry) {
+  if (entry.type !== 'persona') return null;
+  const text = String(entry.text ?? '');
+  if (entry.personaAction) return [{ action:true,text:text.trim().replace(/^\*{1,3}([\s\S]+?)\*{1,3}$/,'$1').trim() }];
+  const parts = [];
+  let last = 0;
+  const push = (action, value) => { const trimmed = value.trim(); if (trimmed) parts.push({ action,text:trimmed }); };
+  for (const match of text.matchAll(/(?<!\*)\*(?!\*)([\s\S]+?)(?<!\*)\*(?!\*)/g)) {
+    push(false,text.slice(last,match.index));
+    push(true,match[1]);
+    last = match.index + match[0].length;
+  }
+  push(false,text.slice(last));
+  return parts.some((part) => part.action) ? parts : null;
+}
+
 function messageIcon(kind, filled = false) {
   const namespace = 'http://www.w3.org/2000/svg';
   const icon = document.createElementNS(namespace,'svg');
@@ -1102,11 +1120,15 @@ export function createWorkspace(container, adapter, options = {}) {
           class:'message-reroll', title:'답변 리롤','aria-label':'답변 리롤',disabled:!!running,
         }) : null));
     const parts = investigatorMessageParts(entry);
-    const dialogue = parts?.dialogue.trim().replace(/^["“]([\s\S]*)["”]$/,'$1');
+    // Speech already in quotes (a bilingual line like "Ciao" (안녕) included) is shown as written.
+    const dialogue = parts?.dialogue.trim();
+    const spoken = dialogue && (/^["“「『]/.test(dialogue) ? dialogue : `"${dialogue}"`);
+    const personaParts = personaMessageParts(entry);
     const body = el('div',{ class:'message-body' },
       parts ? [parts.action ? el('div',{ class:'message-text investigator-action' },richText(parts.action)) : null,
-        dialogue ? el('div',{ class:'message-text' },richText(`"${dialogue}"`)) : null]
-        : el('div',{ class:`message-text${entry.personaAction ? ' persona-action' : ''}` },richText(entry.text)),
+        spoken ? el('div',{ class:'message-text' },richText(spoken)) : null]
+        : personaParts ? personaParts.map((part) => el('div',{ class:`message-text${part.action ? ' investigator-action' : ''}` },richText(part.text)))
+          : el('div',{ class:`message-text${entry.personaAction ? ' persona-action' : ''}` },richText(entry.text)),
       entry.request ? row(note(`조사자 판정 요청 · ${entry.request}`),
         entry.type === 'investigator' && !choosingScenes && (entry.characterId ?? 'local') === (state.settings.cardId || 'local')
           ? button('🎲 판정 굴리기',() => rollRequest(entry),{ class:'request-roll',title:'조사자 시트로 이 판정을 굴립니다',disabled:!!running }) : null) : null,
