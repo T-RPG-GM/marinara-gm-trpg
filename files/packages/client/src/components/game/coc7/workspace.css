@@ -1422,6 +1422,21 @@
   .coc7-game-workspace .compose.folded .compose-actions { flex-wrap: nowrap; }
   .coc7-game-workspace button.compose-open { flex: 1; justify-content: flex-start; border-radius: 999px; color: var(--coc-quiet); font-size: .85rem; }
   .coc7-game-workspace .compose:not(.folded) button.compose-open { display: none; }
+  .coc7-game-workspace .compose:not(.folded) button.compose-hide,
+  .coc7-game-workspace .compose:not(.tucked) button.compose-show { display: none; }
+  .coc7-game-workspace button.compose-hide { flex: none; width: 2.08rem; padding: 0; justify-content: center; font-size: 1.1rem; color: var(--coc-quiet); }
+  .coc7-game-workspace .chat-column { position: relative; }
+  .coc7-game-workspace .chat-column:has(> .compose.tucked) .timeline { padding-bottom: 4.2rem; }
+  .coc7-game-workspace .compose.tucked {
+    position: absolute; right: .75rem; bottom: max(.75rem,env(safe-area-inset-bottom)); z-index: 3;
+    padding: 0; border: 0; background: transparent; box-shadow: none;
+  }
+  .coc7-game-workspace .compose.tucked > :not(.compose-actions),
+  .coc7-game-workspace .compose.tucked .compose-actions > :not(.compose-show) { display: none; }
+  .coc7-game-workspace button.compose-show {
+    width: 2.9rem; min-height: 2.9rem; padding: 0; justify-content: center; border-radius: 50%;
+    font-size: 1.15rem; background: var(--coc-card); box-shadow: var(--coc-shadow);
+  }
   .coc7-game-workspace .tabs { position: relative; display: flex; gap: .3rem; overflow-x: auto; scrollbar-width: none; }
   .coc7-game-workspace .tabs::-webkit-scrollbar { display: none; }
   .coc7-game-workspace .tabs button { flex: none; padding: .15rem .75rem; border-radius: 999px; white-space: nowrap; }

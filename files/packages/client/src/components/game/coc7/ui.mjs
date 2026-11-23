@@ -167,6 +167,15 @@ export function createWorkspace(container, adapter, options = {}) {
   let timelineAtEnd = true, followLatest = false;
   // Phones read more than they play, so the input folds to one line until it is tapped open.
   let composeOpen = false;
+  // A phone reader can tuck the input away entirely; a small ✎ button brings it back. Remembered per browser.
+  let composeHidden = false;
+  try { composeHidden = window.localStorage.getItem('coc7.composeHidden') === '1'; } catch { /* Start shown. */ }
+  const setComposeHidden = (hidden) => {
+    composeHidden = hidden;
+    composeOpen = false;
+    try { window.localStorage.setItem('coc7.composeHidden',hidden ? '1' : '0'); } catch { /* Kept for this session only. */ }
+    render();
+  };
   let timelineCache = null;
   let revealHandout = '';
   let skillAnalysisFor = null;
@@ -1533,7 +1542,7 @@ export function createWorkspace(container, adapter, options = {}) {
       }
     });
     const folded = !composeOpen && !draft.trim();
-    return el('div',{ class:`compose${folded ? ' folded' : ''}` },
+    return el('div',{ class:`compose${folded ? ' folded' : ''}${composeHidden ? ' tucked' : ''}` },
       el('div',{ class:'compose-heading' },persona ? button(`페르소나 · ${persona.name}`,openPersonaName,{ class:'investigator-name',title:'페르소나 시트 열기' }) : el('label',{ for:'coc7-keeper-input' },'키퍼 입력'),
         el('div',{ class:'compose-meta' },usageMeter(),note(state.settings.auto ? '자동 응답 켜짐' : '자동 응답 꺼짐'),
           button('접기',() => { composeOpen = false; render(); },{ class:'mobile-only compose-fold' }))),
@@ -1541,9 +1550,11 @@ export function createWorkspace(container, adapter, options = {}) {
         el('p',{ id:'coc7-keeper-error',class:'compose-error',role:'alert',hidden:true })),
       helper,
       el('div',{ class:'compose-actions' },
+        button('✎',() => setComposeHidden(false),{ class:'mobile-only compose-show',title:'입력창 보이기','aria-label':'입력창 보이기' }),
         button('✎ 입력하기',() => { composeOpen = true; render(); document.getElementById('coc7-keeper-input')?.focus(); },{ class:'mobile-only compose-open' }),
         button(`AI 답변${pendingCount(state) ? ` (${pendingCount(state)}개 읽기)` : ''}`,answer,{ class:'primary' }),
-        cancelRequestButton('chat')));
+        cancelRequestButton('chat'),
+        button('⌄',() => setComposeHidden(true),{ class:'mobile-only compose-hide',title:'입력창 숨기기','aria-label':'입력창 숨기기' })));
   }
 
   // Shorthand in typed text: "npc" becomes the linked persona's name and "pc" the investigator's name,
