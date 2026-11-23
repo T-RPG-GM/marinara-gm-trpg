@@ -2458,10 +2458,18 @@ export function createWorkspace(container, adapter, options = {}) {
       return el('label',{ class:'preset-section' },box,
         el('span',{ class:'preset-section-name' },item.text.slice(0,90),el('small',{},noteLabels[item.kind].split(' · ')[0])));
     });
+    // Quick picks so a long notebook is not unticked one by one: keep only the newest N, or clear every box.
+    const newest = input('keepNewest',Math.min(20,shown.length),{ ...numeric(1,shown.length),'aria-label':'기억할 최신 노트 수',class:'keep-newest' });
+    const keepNewest = () => {
+      const count = Math.max(1,Math.min(shown.length,Math.trunc(Number(newest.value)) || 1));
+      action(apply(new Set(shown.slice(0,count).map((item) => item.id))),`최신 노트 ${count}개만 AI가 기억해요.`)();
+    };
     return el('details',{ class:'record','data-disclosure-id':'ai-note-picker' },
       el('summary',{},`AI가 기억할 조사 노트 · ${kept}/${shown.length}개`),
       note('맨 위가 최신이에요. 체크한 노트만 AI 답변에 보내요. 체크를 풀어도 노트는 지워지지 않아요. 세션 요약은 체크한 것 중 최근 5개까지 보내요.'),
+      el('div',{ class:'row picker-actions' },newest,button('최신 노트만 기억',keepNewest,{ disabled:!!running })),
       pickerForm((values) => saveNow(new Set(values.getAll('noteId').map(String))),boxes,'고른 노트 저장',
+        button('모두 해제',() => { for (const box of boxes) box.querySelector('input').checked = false; }),
         button('전부 기억',() => action(apply(null),'모든 조사 노트를 AI가 기억해요.')(),{ disabled:!!running || kept === shown.length })));
   }
 
