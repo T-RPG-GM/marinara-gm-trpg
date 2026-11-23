@@ -1108,6 +1108,8 @@ export function createWorkspace(container, adapter, options = {}) {
       ? sourceImage(entry.personaAvatar,'',{ class:'avatar' })
       : el('span',{ class:'avatar persona-initial','aria-hidden':true },Array.from(entry.speaker?.trim() || '페')[0]));
     const pickable = choosingScenes && isIllustrationScene(entry);
+    // A scene of only blank filler (like a #빈칸 macro's ㅤ) is a thin spacer box, about half a one-line scene.
+    const spacer = entry.type === 'scene' && !/[^\sㅤᅟᅠ​]/u.test(entry.text ?? '');
     const speakerName = entry.type === 'investigator' && (entry.characterId ?? 'local') === (state.settings.cardId || 'local')
       ? button(entry.speaker || state.sheet.name,openSheet,{ class:'investigator-name',title:'조사자 시트 열기' })
       : canOpenPersona ? button(entry.speaker,openPersonaName,{ class:'investigator-name',title:'페르소나 시트 열기' })
@@ -1138,7 +1140,7 @@ export function createWorkspace(container, adapter, options = {}) {
       illustrations?.map((art) => attachedIllustration(art,art === featured)));
     const tools = !choosingScenes && isIllustrationScene(entry) ? messageTools(entry) : null;
     const message = el('article',{ id:`coc7-message-${entry.id}`,tabindex:-1,
-      class:`message ${entry.type}${pickable ? ' scene-pickable' : ''}${selectedScenes.has(entry.id) ? ' selected-scene' : ''}`,'data-entry-id':entry.id },
+      class:`message ${entry.type}${spacer ? ' spacer' : ''}${pickable ? ' scene-pickable' : ''}${selectedScenes.has(entry.id) ? ' selected-scene' : ''}`,'data-entry-id':entry.id },
       personaAvatar ? el('div',{ class:'persona-bubble' },tools,header,body) : [tools,header,body]);
     if (pickable) {
       for (const control of message.querySelectorAll('button')) control.inert = true;

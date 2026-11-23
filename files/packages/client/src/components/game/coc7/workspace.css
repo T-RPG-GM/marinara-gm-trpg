@@ -1341,6 +1341,7 @@
 
 /* Scene text from /desc reads centred; the AI investigator speaks from the left, the player persona from the right. */
 .coc7-game-workspace .message.scene .message-text { text-align: center; }
+.coc7-game-workspace .message.scene.spacer .message-body { height: 1.35rem; padding: 0; overflow: hidden; }
 .coc7-game-workspace .message.investigator { align-self: flex-start; }
 .coc7-game-workspace .message-text :is(p, ul, ol, blockquote, h1, h2, h3, h4) { margin: .3em 0; }
 .coc7-game-workspace .message-text :is(ul, ol) { padding-left: 1.3em; }
