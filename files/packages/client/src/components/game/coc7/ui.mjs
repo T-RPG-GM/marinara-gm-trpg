@@ -976,7 +976,8 @@ export function createWorkspace(container, adapter, options = {}) {
     const dialog = el('dialog',{ class:'media-dialog confirm-dialog','aria-label':label });
     dialog.addEventListener('close',() => dialog.remove(),{ once:true });
     const cancel = button('취소',() => dialog.close(),{ class:'confirm-cancel' });
-    dialog.append(
+    // Native append writes null as the text "null", so the parts this dialog leaves out are dropped first.
+    dialog.append(...[
       el('div',{ class:'confirm-icon','aria-hidden':true },messageIcon('trash')),
       el('h3',{},heading),
       image ? el('div',{ class:'confirm-image' },image) : null,
@@ -984,7 +985,7 @@ export function createWorkspace(container, adapter, options = {}) {
         el('span',{},preview.length > 160 ? `${preview.slice(0,160)}…` : preview)) : null,
       el('p',{ class:'confirm-note' },notice),
       el('div',{ class:'confirm-actions' },cancel,
-        button('삭제',() => { dialog.close(); onConfirm(); },{ class:'confirm-delete' })));
+        button('삭제',() => { dialog.close(); onConfirm(); },{ class:'confirm-delete' }))].filter(Boolean));
     surface.append(dialog);
     dialog.showModal();
     cancel.focus();
