@@ -32,8 +32,8 @@ import { createPromptsStorage } from "../services/storage/prompts.storage.js";
 const inputSchema = z.object({
   task: z.enum(["turn", "sheet", "sheet-profile", "vision", "summary"]),
   cardId: z.string().max(200).default(""),
-  /** Lorebooks the Keeper picked for the investigator; empty means the bot card's own lorebooks. */
-  lorebookIds: z.array(z.string().max(200)).max(100).default([]),
+  /** Lorebooks the Keeper picked for the investigator (an empty pick sends none); missing means the bot card's own. */
+  lorebookIds: z.array(z.string().max(200)).max(100).optional(),
   connectionId: z.string().max(200).default(""),
   presetId: z.string().max(200).default(""),
   history: z
@@ -322,11 +322,17 @@ export async function cocGameRoutes(app: FastifyInstance) {
   // The lorebooks the Keeper picked for the investigator, or else the bot card's own, run through Marinara's
   // keyword activation over the recent story, so an entry is sent only when the scene calls for it
   // (plus entries the author marked constant).
-  const cardLorebookEntries = async (cardId: string, picked: string[], chatId: string, scan: string, cardName: string) => {
+  const cardLorebookEntries = async (
+    cardId: string,
+    picked: string[] | undefined,
+    chatId: string,
+    scan: string,
+    cardName: string,
+  ) => {
     const books = (await lorebookStore.list()) as unknown as Array<{ id: string; characterId?: unknown; characterIds?: unknown }>;
     const ownsCard = (book: (typeof books)[number]) =>
       !!cardId && (book.characterId === cardId || (Array.isArray(book.characterIds) && book.characterIds.includes(cardId)));
-    const used = (book: (typeof books)[number]) => (picked.length ? picked.includes(book.id) : ownsCard(book));
+    const used = (book: (typeof books)[number]) => (picked ? picked.includes(book.id) : ownsCard(book));
     if (!books.some(used)) return [];
     const result = await processLorebooks(app.db, [{ role: "user", content: scan }], null, {
       chatId,
@@ -698,7 +704,7 @@ export async function cocGameRoutes(app: FastifyInstance) {
         }
         if (personaProfile) add("persona", { role: "user", content: JSON.stringify({ playerPersona: personaProfile }) });
         add("history", ...input.history);
-        if ((card || input.lorebookIds.length) && input.lorebookScan.trim()) {
+        if ((card || input.lorebookIds?.length) && input.lorebookScan.trim()) {
           const cardName = card ? parseRecord(card.data).name : "";
           const lore = await cardLorebookEntries(
             card?.id ?? "",

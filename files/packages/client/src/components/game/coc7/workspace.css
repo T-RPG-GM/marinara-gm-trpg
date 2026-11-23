@@ -1362,6 +1362,7 @@
 /* Preset section picker in the CoC settings. */
 .coc7-game-workspace .preset-sections { display: grid; gap: .45rem; margin-top: .35rem; }
 .coc7-game-workspace .preset-sections > strong { font-size: .78rem; }
+.coc7-game-workspace .picker-actions { justify-content: flex-end; }
 .coc7-game-workspace .preset-section-list { display: grid; gap: .15rem; max-height: 18rem; overflow: auto; padding: .2rem; border: 1px solid var(--coc-stroke); border-radius: var(--coc-radius-sm); background: var(--coc-card); }
 .coc7-game-workspace label.preset-section {
   display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .45rem;

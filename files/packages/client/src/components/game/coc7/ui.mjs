@@ -1636,6 +1636,13 @@ export function createWorkspace(container, adapter, options = {}) {
       button('Marinara 목록 새로고침', () => void run(loadLibrary)));
   }
 
+  // A checklist form whose save button shares one right-aligned row with the picker's other buttons.
+  function pickerForm(submit, boxes, label, ...buttons) {
+    const node = form(submit,[el('div',{ class:'preset-section-list' },boxes)],label);
+    node.append(el('div',{ class:'row picker-actions' },...buttons,node.querySelector(':scope > button[type=submit]')));
+    return node;
+  }
+
   /* Which lorebooks the investigator's answers draw on. Unpicked means the bot card's own lorebooks;
      the Keeper can pick any lorebooks instead. Entries still activate only by the scene's keywords. */
   function lorebookPicker() {
@@ -1644,11 +1651,14 @@ export function createWorkspace(container, adapter, options = {}) {
     const own = (book) => !!cardId && book.characterIds.includes(cardId);
     const books = [...library.lorebooks].sort((a,b) => Number(own(b)) - Number(own(a)) || a.name.localeCompare(b.name,'ko'));
     const missing = picked ? picked.filter((id) => !books.some((book) => book.id === id)).length : 0;
-    const modeLabel = picked ? `직접 고름 · ${picked.length}개` : `봇카드 로어북 · ${books.filter(own).length}개`;
-    const save = (value, message) => action((next) => {
+    const modeLabel = picked ? (picked.length ? `직접 고름 · ${picked.length}개` : '보내지 않음') : `봇카드 로어북 · ${books.filter(own).length}개`;
+    const apply = (value) => (next) => {
       if (value == null) delete next.settings.lorebookIds;
       else next.settings.lorebookIds = value;
-    },message)();
+    };
+    // The form already runs inside run(), so it saves directly; the reset button goes through action().
+    const save = (value, message) => action(apply(value),message)();
+    const saveNow = async (value, message) => { await transact(apply(value)); announce(message,'ok'); };
     const boxes = books.map((book) => {
       const box = check('lorebookId',picked ? picked.includes(book.id) : own(book));
       box.value = book.id;
@@ -1658,11 +1668,10 @@ export function createWorkspace(container, adapter, options = {}) {
           book.enabled ? null : el('small',{},'꺼짐 · 안 보내요')));
     });
     const body = !library.ready && !books.length ? [note('Marinara 목록을 새로고침해 로어북을 불러오세요.')] : [
-      note('AI 답변에 넣을 로어북을 골라요. 고르지 않으면 봇카드에 연결된 로어북을 써요. 고른 로어북도 지금 장면의 단어로 켜진 항목만 들어가요. Marinara에서 꺼 둔 로어북은 보내지 않아요.'),
+      note('AI 답변에 넣을 로어북을 골라요. 기본은 봇카드에 연결된 로어북이에요. 모두 해제하고 저장하면 로어북을 보내지 않아요. 고른 로어북도 지금 장면의 단어로 켜진 항목만 들어가요. Marinara에서 꺼 둔 로어북은 보내지 않아요.'),
       missing ? note(`고른 로어북 중 ${missing}개를 찾을 수 없어요. 다시 저장하면 빠져요.`) : null,
-      books.length ? form((values) => save(values.getAll('lorebookId').map(String),'고른 로어북을 저장했어요.'),
-        [el('div',{ class:'preset-section-list' },boxes)],'고른 로어북 저장') : note('Marinara에 로어북이 없어요.'),
-      row(button('봇카드 로어북 쓰기',() => save(null,'봇카드에 연결된 로어북을 써요.'),{ disabled:!!running || !picked }))];
+      books.length ? pickerForm((values) => saveNow(values.getAll('lorebookId').map(String),'고른 로어북을 저장했어요.'),boxes,'고른 로어북 저장',
+        button('봇카드 로어북 쓰기',() => save(null,'봇카드에 연결된 로어북을 써요.'),{ disabled:!!running || !picked })) : note('Marinara에 로어북이 없어요.')];
     return el('details',{ class:'record','data-disclosure-id':'investigator-lorebooks' },
       el('summary',{},`조사자 로어북 · ${modeLabel}`),...body.filter(Boolean));
   }
@@ -1676,11 +1685,14 @@ export function createWorkspace(container, adapter, options = {}) {
     const choice = state.settings.presetSections?.[preset.id];
     const modeLabel = choice === 'all' ? '전부 보내기' : Array.isArray(choice) ? `직접 고름 · ${choice.length}개` : '자동 · 문체만';
     const host = el('div',{ class:'preset-sections' });
-    const save = (value, message) => action((next) => {
+    const apply = (value) => (next) => {
       next.settings.presetSections = { ...(next.settings.presetSections ?? {}) };
       if (value == null) delete next.settings.presetSections[preset.id];
       else next.settings.presetSections[preset.id] = value;
-    },message)();
+    };
+    // The form already runs inside run(), so it saves directly; the other buttons go through action().
+    const save = (value, message) => action(apply(value),message)();
+    const saveNow = async (value, message) => { await transact(apply(value)); announce(message,'ok'); };
     const fill = (data) => {
       const sections = data.sections ?? [];
       const picked = (item) => (choice === 'all' ? true : Array.isArray(choice) ? choice.includes(item.id) : item.auto);
@@ -1705,9 +1717,8 @@ export function createWorkspace(container, adapter, options = {}) {
       host.replaceChildren(
         note('"자동"은 문체 섹션과 {{기억}}만 보내요. 역할·NPC·상태창·수위 섹션은 게임 규칙과 부딪혀서, 카드·페르소나·로어북은 게임이 따로 보내서 빼요. 카드 정보 같은 "자동" 크기 섹션은 내용이 그때그때 정해져요.'),
         total,
-        form((values) => save(values.getAll('preset-section').map(String),'고른 섹션만 보내도록 저장했어요.'),
-          [el('div',{ class:'preset-section-list' },boxes)],'고른 섹션 저장'),
-        row(button('자동으로 (문체만)',() => save(null,'프리셋을 자동(문체만)으로 보내요.'),{ disabled:!!running || choice == null }),
+        pickerForm((values) => saveNow(values.getAll('preset-section').map(String),'고른 섹션만 보내도록 저장했어요.'),boxes,'고른 섹션 저장',
+          button('자동으로 (문체만)',() => save(null,'프리셋을 자동(문체만)으로 보내요.'),{ disabled:!!running || choice == null }),
           button('전부 보내기',() => save('all','프리셋 전체를 보내요.'),{ disabled:!!running || choice === 'all' })));
     };
     const cached = presetSectionCache.get(preset.id);

@@ -396,8 +396,9 @@ export function getGameAdapter(chatId, call) {
       const { cardId, connectionId, presetId } = state.settings;
       // Which preset sections each preset sends in this game; a preset without an entry uses the automatic choice.
       const presetSections = state.settings.presetSections && typeof state.settings.presetSections === 'object' ? state.settings.presetSections : {};
-      const lorebookIds = Array.isArray(state.settings.lorebookIds) ? state.settings.lorebookIds : [];
-      const response = await http(`${path}/generate`, 'POST', { cardId, connectionId, presetId, presetSections, lorebookIds, ...input }, signal);
+      // Sent only once the Keeper picked lorebooks (even none); otherwise the server uses the bot card's own.
+      const lorebookIds = Array.isArray(state.settings.lorebookIds) ? { lorebookIds:state.settings.lorebookIds } : {};
+      const response = await http(`${path}/generate`, 'POST', { cardId, connectionId, presetId, presetSections, ...lorebookIds, ...input }, signal);
       if (!response.body) throw Error('브라우저가 응답 스트림을 열 수 없습니다.');
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
