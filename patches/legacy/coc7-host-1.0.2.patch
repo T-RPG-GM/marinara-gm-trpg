@@ -1,0 +1,668 @@
+diff --git a/packages/client/src/components/chat/ChatArea.tsx b/packages/client/src/components/chat/ChatArea.tsx
+index 7efc745fd..23c7edc8e 100644
+--- a/packages/client/src/components/chat/ChatArea.tsx
++++ b/packages/client/src/components/chat/ChatArea.tsx
+@@ -488,6 +488,7 @@ const GameSurface = lazy(async () => {
+   const module = await import("../game/GameSurface");
+   return { default: module.GameSurface };
+ });
++const CocGameSurface = lazy(() => import("../game/coc7/CocGameSurface"));
+ 
+ const loadCharacterScheduleEditorModal = async () => {
+   const module = await import("./CharacterScheduleEditorModal");
+@@ -596,6 +597,7 @@ export const ChatArea = memo(function ChatArea({
+   const activeChatId = useChatStore((state) => state.activeChatId);
+   const { data: chat, error, refetch } = useChat(activeChatId);
+   const metadata = chat ? readChatMetadata(chat) : {};
++  const isCocGame = chat?.mode === "game" && metadata.gameVariant === "coc7-keeper";
+   // Keep the local host registered while the next chat loads. Multiplayer registers its own host
+   // once the room is ready; its setup screen must not offer Chat Settings.
+   const hostsChatSettings = Boolean(activeChatId && !(metadata.multiplayerSetup === true || metadata.multiplayer));
+@@ -621,7 +623,7 @@ export const ChatArea = memo(function ChatArea({
+       <ChatOpeningState error={error} onRetry={refetch} onBack={() => useChatStore.getState().setActiveChatId(null)} />
+     );
+   const chatSettingsButton =
+-    chat && chatSettingsHosted && !combatPaneOnScreen ? (
++    chat && !isCocGame && chatSettingsHosted && !combatPaneOnScreen ? (
+       <ChatSettingsBubble
+         chatId={chat.id}
+         mode={readChatMode(chat)}
+@@ -4119,6 +4121,13 @@ const LocalChatArea = memo(function LocalChatArea({
+   // ═══════════════════════════════════════════════
+   if (chatMode === "game") {
+     if (!chat) return surfaceFallback;
++    if (chatMeta.gameVariant === "coc7-keeper") {
++      return (
++        <Suspense fallback={surfaceFallback}>
++          <CocGameSurface key={chat.id} chatId={chat.id} title={chat.name} />
++        </Suspense>
++      );
++    }
+ 
+     return (
+       <Suspense fallback={surfaceFallback}>
+diff --git a/packages/client/src/components/chat/ChatModeSelectorModal.tsx b/packages/client/src/components/chat/ChatModeSelectorModal.tsx
+index b85ebddf7..de23d0cf7 100644
+--- a/packages/client/src/components/chat/ChatModeSelectorModal.tsx
++++ b/packages/client/src/components/chat/ChatModeSelectorModal.tsx
+@@ -33,23 +33,30 @@ interface ChatModeSelectorModalProps {
+   open: boolean;
+   onClose: () => void;
+   onSelectMode: (mode: ChatLaunchMode, playTogether?: boolean) => void;
++  onSelectCoc7?: () => void;
+   isPending?: boolean;
+   sharedOnly?: boolean;
+   showPlayTogether?: boolean;
++  gameOnly?: boolean;
+ }
+ 
+ export function ChatModeSelectorModal({
+   open,
+   onClose,
+   onSelectMode,
++  onSelectCoc7,
+   isPending = false,
+   sharedOnly = false,
+   showPlayTogether = false,
++  gameOnly = false,
+ }: ChatModeSelectorModalProps) {
+-  const { t: localizeUi } = useUiTranslation();
++  const { t: localizeUi, i18n } = useUiTranslation();
+   const status = useMultiplayerStatus();
+   const [playTogether, setPlayTogether] = useState(false);
+   const sharingAvailable = status.data?.available && status.data.enabled;
++  const coc7Description = i18n.language.startsWith("ko")
++    ? "직접 키퍼를 맡아 AI 조사자와 플레이합니다."
++    : localizeUi("home.newChat.coc7Description");
+ 
+   return (
+     <Modal
+@@ -64,26 +71,51 @@ export function ChatModeSelectorModal({
+           {localizeUi("multiplayer.playTogether")}
+         </label>
+       )}
+-      <div data-component="ChatModeSelectorModal" className="grid gap-2 sm:grid-cols-3">
+-        {CHAT_MODE_OPTIONS.map(({ mode, labelKey, descriptionKey }) => (
++      <div
++        data-component="ChatModeSelectorModal"
++        className={`grid gap-2 ${gameOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}
++      >
++        {CHAT_MODE_OPTIONS.filter(({ mode }) => !gameOnly || mode === "game").map(
++          ({ mode, labelKey, descriptionKey }) => (
++            <button
++              key={mode}
++              type="button"
++              onClick={() => onSelectMode(mode, !!sharingAvailable && (sharedOnly || playTogether))}
++              disabled={isPending || (sharedOnly && !sharingAvailable)}
++              className="mari-chat-option-field group flex min-h-24 items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[var(--marinara-chat-chrome-highlight-bg-hover)] disabled:cursor-wait disabled:opacity-60"
++            >
++              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--marinara-chat-chrome-highlight-bg)] text-[var(--marinara-chat-chrome-button-text-active)] ring-1 ring-[var(--marinara-chat-chrome-button-border-active)]">
++                <ChatModeIcon mode={mode} size="0.875rem" />
++              </span>
++              <span className="min-w-0">
++                <span className="block text-xs font-semibold text-[var(--foreground)]">{localizeUi(labelKey)}</span>
++                <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[var(--muted-foreground)]">
++                  {localizeUi(descriptionKey)}
++                </span>
++              </span>
++            </button>
++          ),
++        )}
++        {onSelectCoc7 && !sharedOnly && !playTogether && (
+           <button
+-            key={mode}
+             type="button"
+-            onClick={() => onSelectMode(mode, !!sharingAvailable && (sharedOnly || playTogether))}
+-            disabled={isPending || (sharedOnly && !sharingAvailable)}
+-            className="mari-chat-option-field group flex min-h-24 items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[var(--marinara-chat-chrome-highlight-bg-hover)] disabled:cursor-wait disabled:opacity-60"
++            onClick={onSelectCoc7}
++            disabled={isPending}
++            className="mari-chat-option-field flex min-h-24 items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[var(--marinara-chat-chrome-highlight-bg-hover)] disabled:opacity-60"
+           >
+-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--marinara-chat-chrome-highlight-bg)] text-[var(--marinara-chat-chrome-button-text-active)] ring-1 ring-[var(--marinara-chat-chrome-button-border-active)]">
+-              <ChatModeIcon mode={mode} size="0.875rem" />
++            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--marinara-chat-chrome-highlight-bg)] text-[var(--marinara-chat-chrome-button-text-active)]">
++              <ChatModeIcon mode="game" size="0.875rem" />
+             </span>
+             <span className="min-w-0">
+-              <span className="block text-xs font-semibold text-[var(--foreground)]">{localizeUi(labelKey)}</span>
++              <span className="block text-xs font-semibold text-[var(--foreground)]">
++                {localizeUi("home.newChat.coc7")}
++              </span>
+               <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[var(--muted-foreground)]">
+-                {localizeUi(descriptionKey)}
++                {coc7Description}
+               </span>
+             </span>
+           </button>
+-        ))}
++        )}
+       </div>
+     </Modal>
+   );
+diff --git a/packages/client/src/components/chat/HomeNewChatLauncher.tsx b/packages/client/src/components/chat/HomeNewChatLauncher.tsx
+index 7acd1cc81..3b04e763f 100644
+--- a/packages/client/src/components/chat/HomeNewChatLauncher.tsx
++++ b/packages/client/src/components/chat/HomeNewChatLauncher.tsx
+@@ -1,10 +1,11 @@
+-import { useState, type CSSProperties, type ReactNode } from "react";
++import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+ import { Plus } from "lucide-react";
+ import { useTranslation as useUiTranslation } from "react-i18next";
+ import { useMultiplayerMutation } from "../../hooks/use-multiplayer";
+ import { useCreateChat } from "../../hooks/use-chats";
+ import { useStartNewChatMode } from "../../hooks/use-start-new-chat-mode";
+ import { useChatStore } from "../../stores/chat.store";
++import { isMobileShellViewport, useUIStore } from "../../stores/ui.store";
+ import { cn } from "../../lib/utils";
+ import { HOME_CHAT_MODE_ACCENTS } from "../../lib/home-chat-mode-style";
+ import { showAlertDialog } from "../../lib/app-dialogs";
+@@ -21,6 +22,7 @@ export function HomeNewChatLauncher({ mode, className, children, ariaLabel }: Ho
+   const { t: localizeUi } = useUiTranslation();
+   const [selectorOpen, setSelectorOpen] = useState(false);
+   const createChat = useCreateChat();
++  const startingCoc = useRef(false);
+   const startNewChatMode = useStartNewChatMode();
+   const createShared = useMultiplayerMutation<{ chatId: string }, { name: string; mode: ChatLaunchMode }>(
+     "/multiplayer/prepare",
+@@ -43,11 +45,33 @@ export function HomeNewChatLauncher({ mode, className, children, ariaLabel }: Ho
+     });
+   };
+ 
++  const selectCoc7 = async () => {
++    if (startingCoc.current) return;
++    startingCoc.current = true;
++    try {
++      const chat = await createChat.mutateAsync({
++        mode: "game",
++        name: "CoC 7th TRPG",
++        gameVariant: "coc7-keeper",
++      });
++      setSelectorOpen(false);
++      const store = useChatStore.getState();
++      store.setShouldOpenSettings(false);
++      store.setShouldOpenWizard(false);
++      useUIStore.getState().setSidebarOpen(!isMobileShellViewport());
++      store.setActiveChatId(chat.id);
++    } catch {
++      // The standard create-chat mutation reports the failure.
++    } finally {
++      startingCoc.current = false;
++    }
++  };
++
+   return (
+     <>
+       <button
+         type="button"
+-        onClick={() => (mode ? selectMode(mode) : setSelectorOpen(true))}
++        onClick={() => (mode && mode !== "game" ? selectMode(mode) : setSelectorOpen(true))}
+         data-home-chat-mode={mode}
+         style={mode ? ({ "--home-chat-mode-accent": HOME_CHAT_MODE_ACCENTS[mode] } as CSSProperties) : undefined}
+         className={cn(
+@@ -66,12 +90,14 @@ export function HomeNewChatLauncher({ mode, className, children, ariaLabel }: Ho
+         )}
+       </button>
+ 
+-      {!mode ? (
++      {!mode || mode === "game" ? (
+         <ChatModeSelectorModal
+           showPlayTogether
++          gameOnly={mode === "game"}
+           open={selectorOpen}
+           onClose={() => setSelectorOpen(false)}
+           onSelectMode={selectMode}
++          onSelectCoc7={() => void selectCoc7()}
+           isPending={createChat.isPending || createShared.isPending}
+         />
+       ) : null}
+diff --git a/packages/client/src/components/layout/ChatSidebar.tsx b/packages/client/src/components/layout/ChatSidebar.tsx
+index e6981efdc..43aeed34d 100644
+--- a/packages/client/src/components/layout/ChatSidebar.tsx
++++ b/packages/client/src/components/layout/ChatSidebar.tsx
+@@ -53,6 +53,7 @@ import { cn, getAvatarCropStyle } from "../../lib/utils";
+ import { chatBackgroundMetadataToUrl } from "../../lib/backgrounds";
+ import { formatRelativeContact } from "../../lib/relative-time";
+ import { ChatRowPeek } from "./ChatRowPeek";
++import { HomeNewChatLauncher } from "../chat/HomeNewChatLauncher";
+ import { Fragment, lazy, Suspense, useState, useCallback, useMemo, useRef, useEffect } from "react";
+ import { useTouchFolderDrag } from "../../hooks/use-touch-folder-drag";
+ import { usePresenceClock } from "../../hooks/use-presence-clock";
+@@ -1604,18 +1605,28 @@ export function ChatSidebar() {
+           className="hidden"
+           onChange={handleImportChatFile}
+         />
+-        <button
+-          onClick={handleNewChatFromTab}
+-          disabled={createChat.isPending}
+-          className={cn(
+-            "mari-chrome-control mari-chrome-control--primary mari-chat-mode-action flex-1 text-xs",
+-            activeModeConfig.logoModeClass,
+-          )}
+-          title={t(`navigation.chatSidebar.new.${activeTab}`)}
+-          aria-label={t(`navigation.chatSidebar.new.${activeTab}`)}
+-        >
+-          <Plus size="0.8125rem" className="mari-rgb-static-icon" />
+-        </button>
++        {activeTab === "game" ? (
++          <HomeNewChatLauncher
++            mode="game"
++            className={cn("mari-chrome-control--primary mari-chat-mode-action flex-1", activeModeConfig.logoModeClass)}
++            ariaLabel={t("navigation.chatSidebar.new.game")}
++          >
++            <Plus size="0.8125rem" className="mari-rgb-static-icon" />
++          </HomeNewChatLauncher>
++        ) : (
++          <button
++            onClick={handleNewChatFromTab}
++            disabled={createChat.isPending}
++            className={cn(
++              "mari-chrome-control mari-chrome-control--primary mari-chat-mode-action flex-1 text-xs",
++              activeModeConfig.logoModeClass,
++            )}
++            title={t(`navigation.chatSidebar.new.${activeTab}`)}
++            aria-label={t(`navigation.chatSidebar.new.${activeTab}`)}
++          >
++            <Plus size="0.8125rem" className="mari-rgb-static-icon" />
++          </button>
++        )}
+         <button
+           onClick={() => chatImportInputRef.current?.click()}
+           disabled={isImportingChat}
+diff --git a/packages/client/src/hooks/use-chats.ts b/packages/client/src/hooks/use-chats.ts
+index 646cfc4fa..cd8f82661 100644
+--- a/packages/client/src/hooks/use-chats.ts
++++ b/packages/client/src/hooks/use-chats.ts
+@@ -780,10 +780,11 @@ export function useCreateChat() {
+       personaId?: string | null;
+       personaCharacterId?: string | null;
+       promptPresetId?: string | null;
++      gameVariant?: "coc7-keeper";
+     }) => api.post<Chat>("/chats", data),
+-    onSuccess: (chat) => {
++    onSuccess: (chat, input) => {
+       if (chat) {
+-        if (chat.characterIds.length === 0 && !chat.personaId && !chat.personaCharacterId) {
++        if (!input.gameVariant && chat.characterIds.length === 0 && !chat.personaId && !chat.personaCharacterId) {
+           useChatStore.getState().setPendingNewChatSetup(chat);
+         }
+         qc.setQueryData(chatKeys.detail(chat.id), chat);
+diff --git a/packages/client/src/localization/locales/en.json b/packages/client/src/localization/locales/en.json
+index 99a4bb729..4905b0122 100644
+--- a/packages/client/src/localization/locales/en.json
++++ b/packages/client/src/localization/locales/en.json
+@@ -5155,6 +5155,8 @@
+   "home.learn.tutorialDescription": "Walk through the essentials again.",
+   "home.learn.tutorialTitle": "Replay tutorial",
+   "home.newChat.chooseMode": "Choose a chat mode",
++  "home.newChat.coc7": "CoC 7th TRPG",
++  "home.newChat.coc7Description": "Play as the Keeper with an AI investigator.",
+   "home.newChat.conversationDescription": "Conversational chatting with the characters via DMs or group chats.",
+   "home.newChat.defaultName": "New {{mode}}",
+   "home.newChat.gameDescription": "A cross between a Visual Novel and an RPG, with a Game Master hosting a game for you to play.",
+diff --git a/packages/server/src/routes/chats.routes.ts b/packages/server/src/routes/chats.routes.ts
+index 64e7559fa..2453fd075 100644
+--- a/packages/server/src/routes/chats.routes.ts
++++ b/packages/server/src/routes/chats.routes.ts
+@@ -1482,6 +1482,7 @@ export async function chatsRoutes(app: FastifyInstance) {
+       return reply.status(400).send({ error: "Selected character identity is invalid or unavailable." });
+     }
+     const body = req.body as Record<string, unknown>;
++    const cocGame = input.mode === "game" && body.gameVariant === "coc7-keeper";
+     let chat = await storage.create(
+       input,
+       normalizeTimestampOverrides({
+@@ -1491,8 +1492,11 @@ export async function chatsRoutes(app: FastifyInstance) {
+     );
+     if (!chat) return chat;
+     // No Model picked: the chat follows Main. Without this flag generation treats the empty id as a deleted Model.
+-    if (!input.connectionId) {
+-      await storage.patchMetadata(chat.id, { [CHAT_FOLLOWS_MAIN_KEY]: true });
++    if (!input.connectionId || cocGame) {
++      await storage.patchMetadata(chat.id, {
++        ...(!input.connectionId ? { [CHAT_FOLLOWS_MAIN_KEY]: true } : {}),
++        ...(cocGame ? { gameVariant: "coc7-keeper", enableAgents: false } : {}),
++      });
+       chat = (await storage.getById(chat.id)) ?? chat;
+     }
+ 
+diff --git a/packages/server/src/routes/gallery.routes.ts b/packages/server/src/routes/gallery.routes.ts
+index c01e739..53e5c83 100644
+--- a/packages/server/src/routes/gallery.routes.ts
++++ b/packages/server/src/routes/gallery.routes.ts
+@@ -11,7 +11,9 @@ import {
+   findImageStyleProfile,
+   parseChatImageGenerationRecord,
+   LOCAL_SIDECAR_CONNECTION_ID,
++  normalizeAgentPromptTemplateSelectionMap,
+   readImageAppearanceOverride,
++  resolveAgentPromptTemplate,
+   resolveGameSetupArtStylePrompt,
+   VIDEO_GENERATION_SETTINGS_KEY,
+   normalizeVideoGenerationUserSettings,
+@@ -38,7 +40,7 @@ import {
+   resolveConnectionImageDefaults,
+   resolveConnectionImageQuality,
+ } from "../services/image/image-generation-defaults.js";
+-import { loadImageGenerationUserSettings } from "../services/image/image-generation-settings.js";
++import { loadImageGenerationUserSettings, resolveIllustratorImageSize } from "../services/image/image-generation-settings.js";
+ import {
+   compileImagePrompt,
+   formatImageStylePromptGuidance,
+@@ -60,6 +62,8 @@ import {
+ } from "../services/image/gallery-file-lifecycle.js";
+ import { resolveImageConnectionFallback } from "../services/generation/media-connection-fallback.js";
+ import { resolveIllustratorPromptRuntime } from "../services/generation/illustrator-prompt-runtime.js";
++import { writeManualIllustratorPromptPlan } from "../services/generation/illustrator-manual-prompt-generation.js";
++import { getAgentFallbackPrompt, resolveEffectiveAgentSettings } from "../services/generation/agent-resolution.js";
+ import { resolveIllustratorImageConnectionId } from "../services/generation/illustrator-background-generation.js";
+ import { resolveConversationSelfieSystemPrompt } from "../services/conversation/selfie-prompt.js";
+ import { appendImagePromptInstructions } from "../services/generation/image-prompt-instructions.js";
+@@ -102,6 +106,8 @@ import {
+   toVideoReferenceImage,
+ } from "../services/video/chat-video-generation.js";
+ import {
++  illustratorPromptTemplateOwnsComposition,
++  mergeIllustratorNegativePrompt,
+   readPreferredCharacterReferenceImage,
+   readPreferredPersonaReferenceImage,
+ } from "../services/image/illustrator-references.js";
+@@ -213,9 +219,61 @@ const generateGalleryImageSchema = z.object({
+   mapsArtworkContext: mapsArtworkContextSchema.optional(),
+   promptOverride: z.string().trim().min(1).max(200_000).optional(),
+   negativePromptOverride: z.string().max(200_000).optional(),
++  /** CoC 7th: Image Appearance Override tags of the investigator/persona shown, placed word for word. */
++  appearances: z
++    .array(z.object({ name: z.string().trim().min(1).max(120), tags: z.string().trim().min(1).max(2_000) }))
++    .max(4)
++    .optional(),
++  /** CoC 7th: the text connection that writes the illustration prompt, chosen in the CoC settings. */
++  promptConnectionId: z.string().trim().min(1).max(200).optional(),
+   debugMode: z.boolean().optional().default(false),
+ });
+ 
++/**
++ * CoC 7th: puts each person's override tags word for word where the prompt writer left their `@@name@@` marker
++ * (inside that person's `|` segment), so the tags neither get paraphrased nor land after the scene tags.
++ * Returns the names placed; markers left for anyone else are removed.
++ */
++function placeCoc7Appearances(
++  prompt: string,
++  appearances: Array<{ name: string; tags: string }> | undefined,
++): { prompt: string; placed: Set<string> } {
++  const placed = new Set<string>();
++  let text = prompt;
++  for (const { name, tags } of appearances ?? []) {
++    const marker = new RegExp(`@@\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*@@`, "gu");
++    text = text.replace(marker, () => (placed.has(name) ? "" : (placed.add(name), tags)));
++  }
++  text = text
++    .replace(/@@[^@\n]{0,120}@@/gu, "")
++    .replace(/(?:\s*,\s*){2,}/g, ", ")
++    .replace(/(^|\|)\s*,\s*/g, "$1 ")
++    .trim();
++  return { prompt: text, placed };
++}
++
++/**
++ * Appends override tags as `Name's Appearance: tags` lines, the format Marinara's Illustrator uses,
++ * unless the prompt writer already copied them in.
++ */
++function withCoc7Appearances(
++  prompt: string,
++  appearances: Array<{ name: string; tags: string }> | undefined,
++  visibleNames: string[] | undefined,
++): string {
++  let shown = appearances ?? [];
++  // The prompt writer lists who is actually visible, so a person a scene only mentions ("수아 is not home") stays out.
++  // Names match whole (a note in brackets aside), so 이수아 or 수아의 어머니 never count as 수아.
++  if (visibleNames?.length) {
++    const bare = (name: string) => name.replace(/[(（[].*?[)）\]]/gu, "").trim().toLowerCase();
++    const visible = new Set(visibleNames.map(bare));
++    shown = shown.filter(({ name }) => visible.has(bare(name)));
++  }
++  const missing = shown.filter(({ tags }) => !prompt.includes(tags));
++  if (!missing.length) return prompt;
++  return `${prompt}\n\n${missing.map(({ name, tags }) => `${name}'s Appearance: ${tags}`).join("\n")}`;
++}
++
+ /** Re-send an existing image's final request, possibly edited (#7767). */
+ const regenerateGalleryImageSchema = z.object({
+   prompt: z.string().trim().min(1).max(200_000),
+@@ -246,6 +304,11 @@ const previewGalleryImagesSchema = z.object({
+         title: z.string().trim().min(1).max(200),
+         prompt: z.string().trim().min(1).max(7_000),
+         mapsArtworkContext: mapsArtworkContextSchema.optional(),
++        appearances: z
++          .array(z.object({ name: z.string().trim().min(1).max(120), tags: z.string().trim().min(1).max(2_000) }))
++          .max(4)
++          .optional(),
++        promptConnectionId: z.string().trim().min(1).max(200).optional(),
+       }),
+     )
+     .min(1)
+@@ -375,7 +438,8 @@ async function resolveGalleryImageConnection(
+     logger.warn(err, "[gallery/generate-image] Failed to read Illustrator settings");
+     return null;
+   });
+-  const configuredId = resolveIllustratorImageConnectionId(
++  const chatIllustratorId = metadata.gameVariant === "coc7-keeper" && readTrimmedString(metadata.illustratorImageConnectionId);
++  const configuredId = chatIllustratorId || resolveIllustratorImageConnectionId(
+     chatMode,
+     metadata,
+     parseJsonRecord(illustrator?.settings).imageConnectionId,
+@@ -391,7 +455,7 @@ async function resolveGalleryImageConnection(
+     );
+   }
+   connection ??= await connections.getDefaultForImageGeneration();
+-  return { connection, connections };
++  return { connection, connections, illustrator };
+ }
+ 
+ function readStringArray(value: unknown): string[] {
+@@ -561,13 +625,15 @@ export async function galleryRoutes(app: FastifyInstance) {
+     }
+ 
+     const metadata = parseChatMetadata(chat.metadata);
+-    if (chat.mode === "game" && metadata.enableSpriteGeneration !== true) {
++    const isCoc7 = chat.mode === "game" && metadata.gameVariant === "coc7-keeper";
++    const usesGameMapIllustrator = chat.mode === "game" && !isCoc7;
++    if (usesGameMapIllustrator && metadata.enableSpriteGeneration !== true) {
+       throw new GalleryImageRequestError(400, "Enable Game Illustrator in Chat Settings before creating map artwork.");
+     }
+-    if (chat.mode === "game" && !readTrimmedString(metadata.gameImageConnectionId)) {
++    if (usesGameMapIllustrator && !readTrimmedString(metadata.gameImageConnectionId)) {
+       throw new GalleryImageRequestError(400, "Choose the Game Illustrator image connection in Chat Settings first.");
+     }
+-    const { connection: imageConnection, connections } = await resolveGalleryImageConnection(app, chat.mode, metadata);
++    const { connection: imageConnection, connections, illustrator } = await resolveGalleryImageConnection(app, chat.mode, metadata);
+     if (!imageConnection) {
+       throw new GalleryImageRequestError(
+         400,
+@@ -601,6 +667,10 @@ export async function galleryRoutes(app: FastifyInstance) {
+ 
+     return {
+       chat,
++      isCoc7,
++      metadata,
++      connections,
++      illustrator,
+       imageConnection,
+       imageSettings,
+       imageDefaults,
+@@ -621,6 +691,95 @@ export async function galleryRoutes(app: FastifyInstance) {
+     };
+   }
+ 
++  async function compileCoc7Illustration(
++    context: Awaited<ReturnType<typeof resolveGalleryImageGenerationContext>>,
++    input: {
++      prompt: string;
++      promptOverride?: string;
++      negativePromptOverride?: string;
++      appearances?: Array<{ name: string; tags: string }>;
++      promptConnectionId?: string;
++    },
++    signal?: AbortSignal,
++  ) {
++    const { chat, metadata, illustrator, connections, imageConnection, imageSettings, styleProfileId, imageDefaults } = context;
++    const settings = resolveEffectiveAgentSettings({ agentType: "illustrator", settings: illustrator?.settings, chatMetadata: metadata });
++    const promptTemplate = resolveAgentPromptTemplate({
++      promptTemplate: illustrator?.promptTemplate,
++      fallbackPromptTemplate: getAgentFallbackPrompt("illustrator", settings),
++      settings,
++      selectedPromptTemplateId: normalizeAgentPromptTemplateSelectionMap(metadata.agentPromptTemplateIds).illustrator,
++    });
++    const chosenConnectionId = readTrimmedString(input.promptConnectionId);
++    const promptConnectionId =
++      chosenConnectionId || readTrimmedString(illustrator?.connectionId) || chat.connectionId || (await connections.getDefault())?.id || null;
++    const usePromptWriter = !input.promptOverride && (promptConnectionId || readTrimmedString(metadata.illustratorPromptConnectionId));
++    const styleInstruction = [context.styleProfile.styleText, context.artStyle].filter(Boolean).join("\n");
++    let plan: Awaited<ReturnType<typeof writeManualIllustratorPromptPlan>>["plan"] | undefined;
++    if (usePromptWriter) {
++      const runtime = await resolveIllustratorPromptRuntime({
++        // The connection picked in the CoC settings wins over the chat-level Illustrator override.
++        chatMetadata: chosenConnectionId ? { ...metadata, illustratorPromptConnectionId: null } : metadata,
++        defaultConnection: null,
++        defaultConnectionId: promptConnectionId,
++        connections,
++        resolveBaseUrl,
++      });
++      ({ plan } = await writeManualIllustratorPromptPlan({
++        illustratorAgent: {
++          ...runtime,
++          id: illustrator?.id ?? "builtin:illustrator",
++          type: "illustrator",
++          name: illustrator?.name ?? "Illustrator",
++          phase: "post_generation",
++          isCustomAgent: false,
++          promptTemplate,
++          settings,
++        },
++        context: {
++          chatId: chat.id,
++          chatMode: chat.mode,
++          recentMessages: [{ role: "user", content: input.prompt }],
++          mainResponse: null,
++          gameState: null,
++          characters: [],
++          persona: null,
++          memory: {},
++          chatSummary: null,
++          writableLorebookIds: null,
++        },
++        styleInstruction,
++        imagePromptInstructions: imageConnection.imagePromptInstructions ?? undefined,
++        signal,
++        debugLog: context.debugLog,
++      }));
++    }
++
++    const written = plan ? removeCopiedPromptGuidance(plan.prompt, [styleInstruction, imageConnection.imagePromptInstructions]) : input.prompt;
++    const { prompt, placed } = plan ? placeCoc7Appearances(written, input.appearances) : { prompt: written, placed: new Set<string>() };
++    const compiled = compileImagePrompt({
++      kind: "illustration",
++      prompt: prompt || plan?.prompt || input.prompt,
++      negativePrompt: plan?.negativePrompt,
++      generatedStyle: plan?.style,
++      styleProfiles: imageSettings.styleProfiles,
++      styleProfileId,
++      imageDefaults,
++      omitProfileStyleText: Boolean(plan && styleInstruction),
++      omitProfileSubjectTags: illustratorPromptTemplateOwnsComposition(promptTemplate),
++    });
++    const unplaced = input.appearances?.filter(({ name }) => !placed.has(name));
++    const generatedPrompt = withCoc7Appearances(compiled.prompt, unplaced, plan?.characters);
++    const reviewed = resolveReviewedImagePromptSubmission({
++      generatedPrompt,
++      generatedNegativePrompt: mergeIllustratorNegativePrompt(generatedPrompt, compiled.negativePrompt, plan?.negativePrompt ?? "", imageConnection),
++      promptOverride: input.promptOverride,
++      negativePromptOverride: input.negativePromptOverride,
++    });
++    const size = resolveIllustratorImageSize(imageSettings.game, plan?.aspectRatio);
++    return { ...reviewed, ...resolveImagePromptReviewSize({ connection: imageConnection, prompt: reviewed.prompt, ...size, imageDefaults }) };
++  }
++
+   async function compileGalleryImageRequest(
+     context: Awaited<ReturnType<typeof resolveGalleryImageGenerationContext>>,
+     input: {
+@@ -629,8 +788,12 @@ export async function galleryRoutes(app: FastifyInstance) {
+       mapsArtworkContext?: z.infer<typeof mapsArtworkContextSchema>;
+       promptOverride?: string;
+       negativePromptOverride?: string;
++      appearances?: Array<{ name: string; tags: string }>;
++      promptConnectionId?: string;
+     },
++    signal?: AbortSignal,
+   ) {
++    if (context.isCoc7) return compileCoc7Illustration(context, input, signal);
+     const compiled = await buildBackgroundProviderPrompt({
+       chatId: context.chat.id,
+       locationSlug: input.title?.trim() || "Gallery image",
+@@ -1921,7 +2084,7 @@ export async function galleryRoutes(app: FastifyInstance) {
+           const compiled = await compileGalleryImageRequest(context, item);
+           return {
+             id: item.id,
+-            kind: "background" as const,
++            kind: context.isCoc7 ? "illustration" : "background",
+             title: item.title,
+             sourcePrompt: item.prompt,
+             prompt: compiled.prompt,
+@@ -1962,7 +2125,8 @@ export async function galleryRoutes(app: FastifyInstance) {
+         return reply.status(err.statusCode).send({ error: err.message });
+       }
+       logger.warn(err, "[gallery/generate-image] Failed to preview Gallery image requests for chat %s", chatId);
+-      return reply.status(500).send({ error: "Gallery image prompt preview failed" });
++      const reason = err instanceof Error && err.message ? `: ${err.message.slice(0, 500)}` : "";
++      return reply.status(500).send({ error: `Gallery image prompt preview failed${reason}` });
+     }
+   });
+ 
+@@ -1971,21 +2135,23 @@ export async function galleryRoutes(app: FastifyInstance) {
+     if (!isValidChatId(chatId)) return reply.status(400).send({ error: "Invalid chatId" });
+ 
+     const input = generateGalleryImageSchema.parse(req.body);
++    const signal = createResponseAbortSignal(reply, SCENE_VIDEO_GENERATION_TIMEOUT_MS, "Gallery image generation");
+     let context: Awaited<ReturnType<typeof resolveGalleryImageGenerationContext>>;
+     let compiledPrompt: Awaited<ReturnType<typeof compileGalleryImageRequest>>;
+     try {
+       context = await resolveGalleryImageGenerationContext(chatId, input.debugMode);
+-      compiledPrompt = await compileGalleryImageRequest(context, input);
++      compiledPrompt = await compileGalleryImageRequest(context, input, signal);
+     } catch (err) {
+       if (err instanceof GalleryImageRequestError) {
+         return reply.status(err.statusCode).send({ error: err.message });
+       }
+       logger.warn(err, "[gallery/generate-image] Failed to compile Gallery image request for chat %s", chatId);
+-      return reply.status(500).send({ error: "Gallery image prompt compilation failed" });
++      // The reason (the prompt writer's provider error, a context limit…) goes back with the message, so the
++      // person can tell an empty balance from a broken connection without reading the server log.
++      const reason = err instanceof Error && err.message ? `: ${err.message.slice(0, 500)}` : "";
++      return reply.status(500).send({ error: `Gallery image prompt compilation failed${reason}` });
+     }
+ 
+-    const signal = createResponseAbortSignal(reply, SCENE_VIDEO_GENERATION_TIMEOUT_MS, "Gallery image generation");
+-
+     context.debugLog("[debug/gallery/generate-image] prompt:\n%s", compiledPrompt.prompt);
+     if (compiledPrompt.negativePrompt) {
+       context.debugLog("[debug/gallery/generate-image] negative prompt:\n%s", compiledPrompt.negativePrompt);
+diff --git a/packages/server/src/routes/index.ts b/packages/server/src/routes/index.ts
+index 7d001d41a..70b147fed 100644
+--- a/packages/server/src/routes/index.ts
++++ b/packages/server/src/routes/index.ts
+@@ -55,6 +55,7 @@ import { themesRoutes } from "./themes.routes.js";
+ import { appSettingsRoutes } from "./app-settings.routes.js";
+ import { achievementsRoutes } from "./achievements.routes.js";
+ import { gameRoutes } from "./game.routes.js";
++import { cocGameRoutes } from "./coc7-game.routes.js";
+ import { combatDirectorRoutes, type RoomFightBridge } from "./combat-director.routes.js";
+ import { gameInventoryRoutes } from "./game-inventory.routes.js";
+ import { gameAssetsRoutes } from "./game-assets.routes.js";
+@@ -166,6 +167,7 @@ export async function registerRoutes(app: FastifyInstance) {
+     prefix: "/api/game",
+     onRoomRuntimeReady: (runtime: MultiplayerGameRuntime) => multiplayer.setGameRuntime(runtime),
+   });
++  await app.register(cocGameRoutes, { prefix: "/api/game" });
+   await app.register(multiplayerRoutes, { prefix: "/api/multiplayer", service: multiplayer });
+   await app.register(combatDirectorRoutes, {
+     prefix: "/api/game/combat/director",

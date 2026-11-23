@@ -42,10 +42,10 @@ index 7efc745fd..23c7edc8e 100644
      return (
        <Suspense fallback={surfaceFallback}>
 diff --git a/packages/client/src/components/chat/ChatModeSelectorModal.tsx b/packages/client/src/components/chat/ChatModeSelectorModal.tsx
-index b85ebddf7..de23d0cf7 100644
+index b85ebddf7..88ed494d4 100644
 --- a/packages/client/src/components/chat/ChatModeSelectorModal.tsx
 +++ b/packages/client/src/components/chat/ChatModeSelectorModal.tsx
-@@ -33,23 +33,30 @@ interface ChatModeSelectorModalProps {
+@@ -33,23 +33,31 @@ interface ChatModeSelectorModalProps {
    open: boolean;
    onClose: () => void;
    onSelectMode: (mode: ChatLaunchMode, playTogether?: boolean) => void;
@@ -72,12 +72,13 @@ index b85ebddf7..de23d0cf7 100644
    const [playTogether, setPlayTogether] = useState(false);
    const sharingAvailable = status.data?.available && status.data.enabled;
 +  const coc7Description = i18n.language.startsWith("ko")
-+    ? "직접 키퍼를 맡아 AI 조사자와 플레이합니다."
++    ? "직접 키퍼를 맡아 AI 조사자와 플레이합니다. 크툴루의 부름 7판 규칙과 호환돼요."
 +    : localizeUi("home.newChat.coc7Description");
++  const coc7Label = i18n.language.startsWith("ko") ? "마리나라 GM 전용 TRPG" : localizeUi("home.newChat.coc7");
  
    return (
      <Modal
-@@ -64,26 +71,51 @@ export function ChatModeSelectorModal({
+@@ -64,26 +72,51 @@ export function ChatModeSelectorModal({
            {localizeUi("multiplayer.playTogether")}
          </label>
        )}
@@ -127,7 +128,7 @@ index b85ebddf7..de23d0cf7 100644
              <span className="min-w-0">
 -              <span className="block text-xs font-semibold text-[var(--foreground)]">{localizeUi(labelKey)}</span>
 +              <span className="block text-xs font-semibold text-[var(--foreground)]">
-+                {localizeUi("home.newChat.coc7")}
++                {coc7Label}
 +              </span>
                <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[var(--muted-foreground)]">
 -                {localizeUi(descriptionKey)}
@@ -141,7 +142,7 @@ index b85ebddf7..de23d0cf7 100644
      </Modal>
    );
 diff --git a/packages/client/src/components/chat/HomeNewChatLauncher.tsx b/packages/client/src/components/chat/HomeNewChatLauncher.tsx
-index 7acd1cc81..3b04e763f 100644
+index 7acd1cc81..dc3cac70f 100644
 --- a/packages/client/src/components/chat/HomeNewChatLauncher.tsx
 +++ b/packages/client/src/components/chat/HomeNewChatLauncher.tsx
 @@ -1,10 +1,11 @@
@@ -175,7 +176,7 @@ index 7acd1cc81..3b04e763f 100644
 +    try {
 +      const chat = await createChat.mutateAsync({
 +        mode: "game",
-+        name: "CoC 7th TRPG",
++        name: "마리나라 GM 전용 TRPG",
 +        gameVariant: "coc7-keeper",
 +      });
 +      setSelectorOpen(false);
@@ -288,15 +289,15 @@ index 646cfc4fa..cd8f82661 100644
          }
          qc.setQueryData(chatKeys.detail(chat.id), chat);
 diff --git a/packages/client/src/localization/locales/en.json b/packages/client/src/localization/locales/en.json
-index 99a4bb729..4905b0122 100644
+index 99a4bb729..0aa7b904c 100644
 --- a/packages/client/src/localization/locales/en.json
 +++ b/packages/client/src/localization/locales/en.json
 @@ -5155,6 +5155,8 @@
    "home.learn.tutorialDescription": "Walk through the essentials again.",
    "home.learn.tutorialTitle": "Replay tutorial",
    "home.newChat.chooseMode": "Choose a chat mode",
-+  "home.newChat.coc7": "CoC 7th TRPG",
-+  "home.newChat.coc7Description": "Play as the Keeper with an AI investigator.",
++  "home.newChat.coc7": "Marinara GM TRPG",
++  "home.newChat.coc7Description": "Play as the Keeper with an AI investigator. Compatible with Call of Cthulhu 7th Edition rules.",
    "home.newChat.conversationDescription": "Conversational chatting with the characters via DMs or group chats.",
    "home.newChat.defaultName": "New {{mode}}",
    "home.newChat.gameDescription": "A cross between a Visual Novel and an RPG, with a Game Master hosting a game for you to play.",

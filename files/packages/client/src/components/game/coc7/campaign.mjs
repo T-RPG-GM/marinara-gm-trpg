@@ -302,7 +302,7 @@ export function handleInput(state, input, random = die, persona = null) {
       }
       return rollCheck(state, request, random);
     }
-    default: throw Error(`지원하지 않는 CoC 명령어입니다: ${cmd}`);
+    default: throw Error(`지원하지 않는 명령어입니다: ${cmd}`);
   }
 }
 
@@ -592,10 +592,10 @@ em{font-style:italic;color:var(--quiet)}
 footer{max-width:44rem;margin:0 auto;padding:1.5rem 1rem 3rem;text-align:center;font-size:.75rem;color:var(--quiet);background:var(--page)}
 @media print{body{background:#fff}.cover{print-color-adjust:exact;-webkit-print-color-adjust:exact}main{box-shadow:none;margin-top:0}.speech,.roll,.scene,.art,.handout{break-inside:avoid}}
 </style></head><body>
-<header class="cover"><p class="kicker">Call of Cthulhu 7th Edition · Replay</p><h1>${escapeHtml(state.title)}</h1><p class="subtitle">${escapeHtml(subtitle)}</p>
+<header class="cover"><p class="kicker">TRPG Replay</p><h1>${escapeHtml(state.title)}</h1><p class="subtitle">${escapeHtml(subtitle)}</p>
 <div class="cast">${cast}</div><p class="date">${escapeHtml(new Date().toLocaleDateString('ko-KR'))}</p></header>
 <main>${chapterHtml || '<p class="empty">공개된 기록이 없습니다.</p>'}</main>
-<footer>크툴루의 부름 7판 리플레이</footer>
+<footer>TRPG 리플레이</footer>
 </body></html>`;
 }
 
@@ -683,7 +683,7 @@ export function illustrationPrompt(state, sourceIds, persona) {
   const placement = !appearances.length ? ''
     : `이미지용 외모 태그는 직접 옮겨 쓰지 말고, 그 인물 태그 맨 앞에 자리표시 ${markers}를 글자 그대로 쓴다. 그 자리에 외모 태그가 자동으로 들어간다. 자리표시 뒤에는 그 인물의 동작·표정·상태 태그만 쓴다.`;
   const prompt = [
-    '크툴루의 부름 TRPG 삽화. 아래에 고른 장면을 진행 순서대로 참고한다. 서로 다른 순간이면 마지막 장면을 중심으로 앞 장면의 시각적 단서를 반영한다.',
+    '크툴루 신화풍 호러 TRPG 삽화. 아래에 고른 장면을 진행 순서대로 참고한다. 서로 다른 순간이면 마지막 장면을 중심으로 앞 장면의 시각적 단서를 반영한다.',
     together ? '두 인물이 함께 보이면 인물마다 " | "로 나눈 구간을 하나씩 만들고, 다른 인물의 특징을 섞지 않는다.' : '',
     placement,
     look('조사자',investigatorLabel,override,appearance),

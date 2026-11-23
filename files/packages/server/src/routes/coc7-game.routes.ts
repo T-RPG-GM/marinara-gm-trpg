@@ -407,7 +407,7 @@ export async function cocGameRoutes(app: FastifyInstance) {
     const chat = id.success ? await chats.getById(id.data) : null;
     const metadata = parseRecord(chat?.metadata);
     if (chat?.mode === "game" && metadata.gameVariant === "coc7-keeper" && !metadata.multiplayer) return chat;
-    reply.code(404).send({ error: "CoC 7th TRPG 게임을 찾을 수 없습니다." });
+    reply.code(404).send({ error: "게임을 찾을 수 없습니다." });
     return null;
   };
 

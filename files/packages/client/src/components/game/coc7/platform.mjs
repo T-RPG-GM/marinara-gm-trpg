@@ -42,7 +42,7 @@ export async function makeBackup(state, vault) {
 }
 
 export async function importBackup(doc, vault, gameChatId) {
-  if (doc?.kind !== 'marinara.coc7.backup' || doc.version !== SCHEMA || !Array.isArray(doc.files)) throw Error('CoC 백업 JSON을 선택하세요.');
+  if (doc?.kind !== 'marinara.coc7.backup' || doc.version !== SCHEMA || !Array.isArray(doc.files)) throw Error('캠페인 백업 JSON을 선택하세요.');
   const state = validateCampaign(doc.state);
   const add = [];
   if (doc.files.length !== state.assets.length) throw Error('백업 파일 목록이 일치하지 않습니다.');

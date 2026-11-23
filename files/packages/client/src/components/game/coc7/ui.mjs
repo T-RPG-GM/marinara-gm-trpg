@@ -619,7 +619,7 @@ export function createWorkspace(container, adapter, options = {}) {
     dialog.showModal();
   }
 
-  // A finalized sheet opens as a read-only character sheet laid out like a printed CoC 7th sheet.
+  // A finalized sheet opens as a read-only character sheet.
   // Drafts keep opening the editing tab, since their numbers are still moving.
   function openInvestigatorName() {
     if (state.sheet.finalized) showCharacterSheet();
@@ -698,7 +698,7 @@ export function createWorkspace(container, adapter, options = {}) {
       info('현재 정신 상태',insanity),
       condition.bout ? info('발작표',`D10 ${condition.bout}${condition.hours ? ` · ${condition.hours}시간` : ''}`) : null)) : null;
 
-    // Three columns as on a printed CoC 7th sheet: the occupation-side printed skills under the occupation points,
+    // Three columns: the occupation-side printed skills under the occupation points,
     // the interest-side ones under the personal interest points, and growth skills plus any added skills under
     // the remaining points. Points follow the rules: occupation formula (EDU×4 by default) and INT×2.
     const [occupationUsage, interestUsage] = creationPointUsage(sheet);
@@ -749,7 +749,7 @@ export function createWorkspace(container, adapter, options = {}) {
 
     dialog.append(
       el('header',{ class:'sheet-header' },
-        el('div',{ class:'sheet-title' },el('h3',{},sheet.name),el('span',{},'Call of Cthulhu 7th 캐릭터 시트')),
+        el('div',{ class:'sheet-title' },el('h3',{},sheet.name),el('span',{},'캐릭터 시트')),
         el('div',{ class:'sheet-actions' },
           el('label',{ class:'sheet-color' },picker,el('span',{},'포인트 색')),
           button(personaId ? '페르소나 시트 편집' : '조사자 시트 편집',() => { dialog.close(); if (personaId) openPersonaSheet(); else openSheet(); }),
@@ -1161,7 +1161,7 @@ export function createWorkspace(container, adapter, options = {}) {
     referenceMemories:'기억 서재', pendingKeeperEvents:'이번 턴 장면', handouts:'핸드아웃', images:'첨부 이미지',
     instructions:'키퍼 지시', session:'세션', log:'세션 기록',
   };
-  const promptLabelNames = { rules:'CoC 규칙', persona:'플레이어 페르소나', lorebook:'조사자 로어북', keeper:'키퍼 지시',
+  const promptLabelNames = { rules:'게임 규칙', persona:'플레이어 페르소나', lorebook:'조사자 로어북', keeper:'키퍼 지시',
     chat_history:'대화 기록', request:'요청', preset_system:'프리셋 · system', preset_user:'프리셋 · user', preset_assistant:'프리셋 · assistant' };
   const promptLabel = (section) => {
     if (section.label.startsWith('request:')) {
@@ -1673,7 +1673,7 @@ export function createWorkspace(container, adapter, options = {}) {
       for (const label of boxes) label.querySelector('input').addEventListener('change',recount);
       recount();
       host.replaceChildren(
-        note('"자동"은 문체 섹션과 {{기억}}만 보내요. 역할·NPC·상태창·수위 섹션은 CoC 규칙과 부딪혀서, 카드·페르소나·로어북은 CoC가 따로 보내서 빼요. 카드 정보 같은 "자동" 크기 섹션은 내용이 그때그때 정해져요.'),
+        note('"자동"은 문체 섹션과 {{기억}}만 보내요. 역할·NPC·상태창·수위 섹션은 게임 규칙과 부딪혀서, 카드·페르소나·로어북은 게임이 따로 보내서 빼요. 카드 정보 같은 "자동" 크기 섹션은 내용이 그때그때 정해져요.'),
         total,
         form((values) => save(values.getAll('preset-section').map(String),'고른 섹션만 보내도록 저장했어요.'),
           [el('div',{ class:'preset-section-list' },boxes)],'고른 섹션 저장'),
@@ -2887,7 +2887,7 @@ export function createWorkspace(container, adapter, options = {}) {
         const html = buildReplayHtml(state,{ session, personaName:playerPersona()?.name ?? '', occupation:state.sheet.occupation,
           accent, accentText:accentTextColor(accent), images:await replayImages(session,values.has('art')) });
         const base = `${state.title}${session == null ? '' : `-${sessionHeading(state.sessions.find((item) => item.number === session) ?? { number:session })}`}`
-          .replace(/[\\/:*?"<>|]+/g,' ').trim() || 'CoC7';
+          .replace(/[\\/:*?"<>|]+/g,' ').trim() || 'TRPG';
         downloadFile(`${base}-리플레이.html`,html,'text/html;charset=utf-8');
         announce('리플레이를 내보냈습니다.','ok');
       }, [field('범위',select('scope',[['all','전체 세션'],...state.sessions.map((item) => [String(item.number),sessionHeading(item)])],String(state.session))),
@@ -2906,17 +2906,17 @@ export function createWorkspace(container, adapter, options = {}) {
       }), field('새 세션 이름',input('name','',{ required:true,maxlength:150 })), '세션 추가', 'session-add'),
       el('div',{ class:'row session-file-actions' },button('지금 저장',action((next) => audit(next,'키퍼 수동 저장'),'저장했습니다.')),
         button('캠페인 백업 JSON',() => void run(async () => {
-          downloadFile('CoC7-캠페인-백업.json',JSON.stringify(await makeBackup(state,vault)));
+          downloadFile('TRPG-캠페인-백업.json',JSON.stringify(await makeBackup(state,vault)));
           announce('키퍼 전용 항목과 첨부를 포함한 백업을 내보냈습니다.','ok');
         })),
-        button('공개 채팅 JSON',() => downloadFile('CoC7-공개-채팅.json',JSON.stringify(buildPublicContext(state),null,2)))),
+        button('공개 채팅 JSON',() => downloadFile('TRPG-공개-채팅.json',JSON.stringify(buildPublicContext(state),null,2)))),
       state.revision === 0 && !state.timeline.length && !state.assets.length && !state.audit.length ? form(async (values) => {
         const file = values.get('backup');
         if (file.size > 100_000_000) throw Error('100MB 이하 백업을 선택하세요.');
         state = await importBackup(JSON.parse(await file.text()),vault,options.gameChatId);
         resetDrafts();
         announce('이 게임에 백업을 복원했습니다.','ok');
-      }, field('기존 CoC 캠페인 백업',input('backup','',{ type:'file',accept:'.json',required:true })), '이 게임에 백업 복원') : null);
+      }, field('기존 캠페인 백업',input('backup','',{ type:'file',accept:'.json',required:true })), '이 게임에 백업 복원') : null);
     return [fieldSettings(),personaSettings(),panel,wrapUpPanel(),replayPanel(),
       section('게임 설정',form((values) => transact((next) => {
         next.settings.auto = values.has('auto');

@@ -1,8 +1,18 @@
-# 크툴루의 부름 7판 TRPG (Marinara CoC 7th)
+# 마리나라 GM 전용 TRPG
 
-> **베타 (v1.0.2)**: 매일 쓰면서 다듬는 중이에요. 설치하기 전에 Marinara 데이터를 백업해 두세요. 문제가 있으면 이슈로 알려 주세요.
+> **베타 (v1.1.0)**: 매일 쓰면서 다듬는 중이에요. 설치하기 전에 Marinara 데이터를 백업해 두세요. 문제가 있으면 이슈로 알려 주세요.
 
-Marinara Engine용 비공식 확장이에요. GM(게임) 모드에 <strong>「CoC 7th TRPG」</strong>를 더해요.
+Marinara Engine용 비공식 확장이에요. GM(게임) 모드에 **「마리나라 GM 전용 TRPG」**를 더해요. 크툴루의 부름 7판 규칙과 호환돼요.
+
+> [!IMPORTANT]
+> **비공식 · 무료 팬 프로젝트예요.**
+> - Marinara Engine(Pasta-Devs)의 공식 기능이 아니에요.
+> - 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요. 이 확장은 Chaosium과 관련이 없고, Chaosium의 허가나 보증을 받지 않았어요.
+> - 규칙서 본문은 들어 있지 않아요. 플레이하려면 규칙서를 정식으로 구해 주세요.
+> - 돈을 받고 팔거나 유료로 배포할 수 없어요.
+> - 권리자가 삭제를 요청하면 바로 내려요. 이슈로 알려 주세요.
+
+## 무엇을 하나요
 
 - **내가 키퍼, AI가 조사자.** 내가 장면을 묘사하고 NPC를 연기하면, AI가 조사자 한 명을 시트대로 연기해요.
 - **주사위와 시트는 화면이 챙겨요.** 기능 판정(일반 · 어려움 · 극단, 보너스 · 페널티 주사위), 대성공 · 대실패, 행운 소비, 강행, 이성 판정과 광기, 전투 · 추격, 성장 굴림까지 있어요.
@@ -35,7 +45,7 @@ Marinara Engine용 비공식 확장이에요. GM(게임) 모드에 <strong>「Co
 Marinara-Engine\
   ├ start.bat
   ├ packages\
-  └ marinara-coc7-main\   ← 여기
+  └ marinara-gm-trpg-main\   ← 여기
 ```
 
 폴더 이름은 바꿔도 돼요. `Marinara-Engine` 바로 안에만 있으면 돼요.
@@ -45,25 +55,27 @@ Marinara-Engine\
 `Marinara-Engine` 폴더에서 명령 창을 열고:
 
 ```
-git clone https://github.com/T-RPG-GM/marinara-coc7
+git clone https://github.com/T-RPG-GM/marinara-gm-trpg
 ```
 
 ### 2. 설치 실행
 
 1. Marinara를 꺼요.
-2. 받은 폴더 안의 <strong>`CoC 설치.bat`</strong>을 더블클릭해요. 빌드까지 1~2분 걸려요.
+2. 받은 폴더 안의 <strong>`설치.bat`</strong>을 더블클릭해요. 빌드까지 1~2분 걸려요.
 3. <strong>[완료]</strong>가 나오면 Marinara를 켜요.
-4. **새 대화 → GM(게임) → CoC 7th TRPG**를 고르면 시작돼요.
+4. **새 대화 → GM(게임) → 마리나라 GM 전용 TRPG**를 고르면 시작돼요.
 
 설치기가 하는 일은 이것뿐이에요.
 
-1. CoC 파일을 Marinara 폴더에 복사해요.
-2. `.git/info/exclude`에 등록해요. `start.bat`은 켤 때마다 새로 생긴 소스 파일을 지우는데, CoC 파일은 지우지 않게 해요.
-3. Marinara 파일 몇 곳에 CoC 연결 줄을 넣어요(새 대화 메뉴, 채팅 화면, 서버 경로, 삽화 처리). 맞지 않으면 모든 파일을 원래대로 되돌리고 멈춰요.
+1. 게임 파일을 Marinara 폴더에 복사해요.
+2. `.git/info/exclude`에 등록해요. `start.bat`은 켤 때마다 새로 생긴 소스 파일을 지우는데, 게임 파일은 지우지 않게 해요.
+3. Marinara 파일 몇 곳에 연결 줄을 넣어요(새 대화 메뉴, 채팅 화면, 서버 경로, 삽화 처리). 맞지 않으면 모든 파일을 원래대로 되돌리고 멈춰요.
 4. 일부 환경에서 빌드가 멈추는 타입 표기 4곳을 고쳐요(맞을 때만).
 5. 화면과 서버를 다시 빌드해요.
 
 게임 기록은 건드리지 않아요.
+
+**예전 이름(CoC 7th TRPG, `marinara-coc7`)으로 설치해 두셨다면** — 새로 받은 폴더의 <strong>`설치.bat`</strong>을 실행하면 예전 연결 줄을 빼고 새 판으로 바꿔요. 게임 기록은 그대로 남아요. 예전 폴더는 지워도 돼요.
 
 **설치 확인** — 바꾸지 않고 상태만 보려면 받은 폴더에서:
 
@@ -97,9 +109,9 @@ node install.mjs check
 
 ## 업데이트
 
-- **Marinara를 업데이트한 뒤** CoC가 안 보이면, Marinara를 끄고 <strong>`CoC 다시 적용.bat`</strong>을 실행해요. 들어가 있는 부분은 그대로 두고 빠진 부분만 다시 넣어요.
-- **CoC 새 판을 받을 때** — ZIP은 새로 받아 폴더를 바꾸고, git은 `git pull`을 한 뒤 <strong>`CoC 설치.bat`</strong>을 다시 실행해요.
-- "이 Marinara 버전에는 CoC 연결 부분이 맞지 않아요"가 나오면 아무것도 바뀌지 않은 상태예요. 새 판을 기다려 주세요.
+- **Marinara를 업데이트한 뒤** 게임 메뉴가 안 보이면, Marinara를 끄고 <strong>`다시 적용.bat`</strong>을 실행해요. 들어가 있는 부분은 그대로 두고 빠진 부분만 다시 넣어요.
+- **새 판을 받을 때** — ZIP은 새로 받아 폴더를 바꾸고, git은 `git pull`을 한 뒤 <strong>`설치.bat`</strong>을 다시 실행해요.
+- "이 Marinara 버전에는 게임 연결 부분이 맞지 않아요"가 나오면 아무것도 바뀌지 않은 상태예요. 새 판을 기다려 주세요.
 
 ## 비용이 드는 곳
 
@@ -110,17 +122,18 @@ node install.mjs check
 
 ## 끄기 · 지우기
 
-Marinara를 끄고 <strong>`CoC 제거.bat`</strong>을 실행하면 CoC 파일과 연결 줄을 빼고 다시 빌드해요.
+Marinara를 끄고 <strong>`제거.bat`</strong>을 실행하면 게임 파일과 연결 줄을 빼고 다시 빌드해요.
 
 - 게임 기록(Marinara 데이터 폴더의 `coc7-games`)은 지우지 않아요.
 - 빌드 호환 수정(타입 표기 4곳)은 빌드가 계속 되도록 남겨 둬요. 기능은 바뀌지 않아요.
-- 설치가 거절됐던 상태에서도 제거는 돼요.
+- 설치가 거절됐던 상태나 예전 판만 들어가 있는 상태에서도 제거는 돼요.
 
 ## 알려진 한계
 
 - Marinara Engine 2.5.2, Windows에서만 시험했어요. Linux · macOS는 `node install.mjs install`로 될 수 있지만 확인하지 않았어요.
 - AI는 조사자 한 명을 맡아요.
 - 삽화가 어떻게 나오는지는 이미지 모델과 이미지 연결의 Prompt Prefix에 따라 달라요. 모든 그림에 들어가는 태그라서, 장면과 맞지 않는 태그가 있으면 계속 영향을 줘요.
+- 파일 이름과 내부 이름의 `coc7`은 예전 판과 게임 기록을 그대로 쓰기 위한 이름이에요.
 
 ## 데이터와 보안
 
@@ -132,15 +145,17 @@ Marinara를 끄고 <strong>`CoC 제거.bat`</strong>을 실행하면 CoC 파일�
 
 | 경로 | 내용 |
 | --- | --- |
-| `files/` | CoC 화면과 서버 파일 |
-| `patches/coc7-host.patch` | Marinara 파일에 넣는 CoC 연결 줄 |
+| `files/` | 게임 화면과 서버 파일 |
+| `patches/coc7-host.patch` | Marinara 파일에 넣는 연결 줄 |
 | `patches/build-compat.patch` | 빌드 호환 타입 표기 |
+| `patches/legacy/` | 예전 판 연결 줄 (업그레이드 · 제거 때만 써요) |
 | `install.mjs` | 설치 · 다시 적용 · 제거 · 확인 |
-| `*.bat` | Windows에서 더블클릭으로 실행 |
+| `설치.bat` · `다시 적용.bat` · `제거.bat` | Windows에서 더블클릭으로 실행 |
 | `설명서.html` | 기능 설명서 |
 
 ## 라이선스와 상표
 
 - **AGPL-3.0**이에요. 연결 패치에 Marinara Engine 코드가 들어 있어서 Marinara Engine과 같은 라이선스를 따라요. `LICENSE`를 보세요.
 - Marinara Engine 공식 프로젝트가 아니에요. Pasta-Devs와 관련이 없어요.
-- 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요. 이 확장은 Chaosium과 관련이 없어요.
+- 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요. 이 확장은 Chaosium과 관련이 없고, 이름은 규칙 호환을 설명하려고만 써요.
+- 권리자의 삭제 요청이 있으면 바로 내려요.

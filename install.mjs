@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Marinara CoC 7th TRPG — installer, re-applier and remover.
+// 마리나라 GM 전용 TRPG (unofficial; compatible with Call of Cthulhu 7th Edition rules) — installer, re-applier and remover.
 //
 //   node install.mjs install   [Marinara 폴더]   설치 (이미 설치돼 있으면 빠진 부분만 다시 넣어요)
 //   node install.mjs uninstall [Marinara 폴더]   제거 (게임 기록은 지우지 않아요)
@@ -36,7 +36,7 @@ function findRoot() {
   for (const dir of [target, resolve(here, '..'), process.cwd()]) {
     if (dir && isMarinara(resolve(dir))) return resolve(dir);
   }
-  fail('Marinara 폴더를 찾지 못했어요. 이 폴더(marinara-coc7)를 Marinara-Engine 폴더 안에 넣고 다시 실행하거나,\n       node install.mjs install "Marinara 폴더 경로" 로 실행해 주세요.');
+  fail('Marinara 폴더를 찾지 못했어요. 이 폴더(marinara-gm-trpg)를 Marinara-Engine 폴더 안에 넣고 다시 실행하거나,\n       node install.mjs install "Marinara 폴더 경로" 로 실행해 주세요.');
 }
 
 const root = findRoot();
@@ -58,14 +58,18 @@ const excludeFile = (() => {
   const found = hasGit ? spawnSync('git', ['rev-parse', '--git-path', 'info/exclude'], { cwd: root, encoding: 'utf8' }).stdout.trim() : '';
   return found ? resolve(root, found) : join(root, '.git', 'info', 'exclude');
 })();
-const excludeStart = '# >>> Marinara CoC 7th TRPG (자동 관리 · 지우지 마세요)';
-const excludeEnd = '# <<< Marinara CoC 7th TRPG';
+const excludeStart = '# >>> 마리나라 GM 전용 TRPG (자동 관리 · 지우지 마세요)';
+const excludeEnd = '# <<< 마리나라 GM 전용 TRPG';
+// Blocks written by earlier versions under the old name are cleaned up too.
+const legacyExclude = [['# >>> Marinara CoC 7th TRPG (자동 관리 · 지우지 마세요)', '# <<< Marinara CoC 7th TRPG']];
 function writeExclude(add) {
   if (!hasGit) return;
   mkdirSync(dirname(excludeFile), { recursive: true });
   const current = existsSync(excludeFile) ? readFileSync(excludeFile, 'utf8') : '';
   const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const kept = current.replace(new RegExp(`\\n?${literal(excludeStart)}[\\s\\S]*?${literal(excludeEnd)}\\n?`, 'g'), '\n').replace(/\n{3,}/g, '\n\n');
+  const kept = [[excludeStart, excludeEnd], ...legacyExclude]
+    .reduce((text, [start, end]) => text.replace(new RegExp(`\\n?${literal(start)}[\\s\\S]*?${literal(end)}\\n?`, 'g'), '\n'), current)
+    .replace(/\n{3,}/g, '\n\n');
   const block = add ? `\n${excludeStart}\n${manifest.exclude.join('\n')}\n${excludeEnd}\n` : '';
   writeFileSync(excludeFile, `${kept.trimEnd()}\n${block}`);
 }
@@ -177,8 +181,23 @@ function build() {
 
 const hostPatch = join(here, 'patches', 'coc7-host.patch');
 const compatPatch = join(here, 'patches', 'build-compat.patch');
+// Connection lines of earlier releases. They change the same lines as the current patch, so an install over an
+// older release takes the old lines out first; uninstall also removes them when only an old release is in.
+const legacyDir = join(here, 'patches', 'legacy');
+const legacyPatches = existsSync(legacyDir)
+  ? readdirSync(legacyDir).filter((name) => name.endsWith('.patch')).map((name) => join(legacyDir, name))
+  : [];
+function removeLegacy() {
+  if (applied(hostPatch)) return true;
+  for (const patch of legacyPatches) {
+    if (fits(patch) || !present(patch)) continue;
+    say(`  · 예전 판 연결(${patch.split(/[\\/]/).pop()})을 먼저 빼요`);
+    if (!reversePatch(patch)) return false;
+  }
+  return true;
+}
 
-say(`Marinara CoC 7th TRPG ${manifest.version}`);
+say(`${manifest.name} ${manifest.version}`);
 say(`Marinara 폴더: ${root}`);
 try {
   const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
@@ -193,31 +212,36 @@ if (command === 'check') {
 }
 
 if (command === 'install' || command === 'reapply') {
-  say('\n[1/4] CoC 파일 복사');
+  say('\n[1/4] 게임 파일 복사');
   for (const file of ownedFiles) {
     mkdirSync(dirname(join(root, file)), { recursive: true });
     copyFileSync(join(here, 'files', file), join(root, file));
   }
   say(`  · ${ownedFiles.length}개 파일`);
-  say('\n[2/4] 실행기가 CoC 파일을 지우지 않게 보호');
+  say('\n[2/4] 실행기가 게임 파일을 지우지 않게 보호');
   writeExclude(true);
   say(hasGit ? '  · .git/info/exclude 에 등록했어요' : '  · git 폴더가 없어 건너뛰었어요');
-  say('\n[3/4] Marinara에 CoC 연결');
+  say('\n[3/4] Marinara에 게임 연결');
+  if (!removeLegacy()) {
+    fail('예전 판의 연결 부분을 자동으로 빼지 못했어요. Marinara 파일은 그대로 두었어요.\n       Marinara 폴더에서 git으로 해당 파일을 원래대로 되돌린 뒤 다시 실행해 주세요.');
+  }
   if (!applyPatch(hostPatch, { required: true })) {
-    fail('이 Marinara 버전에는 CoC 연결 부분이 맞지 않아요. 파일은 원래대로 되돌렸어요.\n       새 버전의 CoC 패키지를 받아 주세요. (CoC 파일 복사와 보호는 그대로 남아 있어요)');
+    fail('이 Marinara 버전에는 게임 연결 부분이 맞지 않아요. 파일은 원래대로 되돌렸어요.\n       새 버전의 패키지를 받아 주세요. (게임 파일 복사와 보호는 그대로 남아 있어요)');
   }
   applyPatch(compatPatch, { required: false });
   say('\n[4/4]');
   build();
-  say('\n[완료] Marinara를 다시 시작하면 "새 대화 → GM(게임) → CoC 7th TRPG"로 시작할 수 있어요.');
-  say('       Marinara를 업데이트한 뒤 CoC가 안 보이면 "CoC 다시 적용.bat"을 실행해 주세요.');
+  say('\n[완료] Marinara를 다시 시작하면 "새 대화 → GM(게임) → 마리나라 GM 전용 TRPG"로 시작할 수 있어요.');
+  say('       Marinara를 업데이트한 뒤 게임 메뉴가 안 보이면 "다시 적용.bat"을 실행해 주세요.');
 } else if (command === 'uninstall') {
-  say('\n[1/3] Marinara에서 CoC 연결 빼기');
+  say('\n[1/3] Marinara에서 게임 연결 빼기');
   // The build-compat lines stay: they are plain type annotations that keep some setups building.
-  if (!reversePatch(hostPatch)) {
-    fail('Marinara 파일에서 CoC 연결 부분을 자동으로 빼지 못했어요. CoC 파일도 그대로 두었어요 (지우면 빌드가 깨져요).\n       Marinara 폴더에서 git으로 해당 파일을 원래대로 되돌린 뒤 다시 실행해 주세요.');
+  // Only an earlier release's lines in (never updated to this one): those are the ones to take out.
+  const legacyIn = !applied(hostPatch) && legacyPatches.find((patch) => applied(patch));
+  if (!(legacyIn ? reversePatch(legacyIn) : reversePatch(hostPatch))) {
+    fail('Marinara 파일에서 게임 연결 부분을 자동으로 빼지 못했어요. 게임 파일도 그대로 두었어요 (지우면 빌드가 깨져요).\n       Marinara 폴더에서 git으로 해당 파일을 원래대로 되돌린 뒤 다시 실행해 주세요.');
   }
-  say('\n[2/3] CoC 파일 지우기');
+  say('\n[2/3] 게임 파일 지우기');
   for (const file of ownedFiles) rmSync(join(root, file), { force: true });
   for (const dir of manifest.ownedDirs) {
     const full = join(root, dir);
@@ -227,7 +251,7 @@ if (command === 'install' || command === 'reapply') {
   say('  · 지웠어요 (게임 기록 packages/server/data/coc7-games 는 그대로 남겨요)');
   say('\n[3/3]');
   build();
-  say('\n[완료] CoC를 뺐어요. Marinara를 다시 시작해 주세요.');
+  say('\n[완료] 게임을 뺐어요. Marinara를 다시 시작해 주세요.');
 } else {
   fail(`알 수 없는 명령이에요: ${command} (install, uninstall, check 중 하나)`);
 }
