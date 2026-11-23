@@ -1403,10 +1403,8 @@ export function createWorkspace(container, adapter, options = {}) {
       priceTableView(tableHost);
       dialog.replaceChildren(...[
         row(headline(only ? onlyTitle : '토큰 사용량 · 비용'),button('닫기',() => dialog.close())),
-        only ? receipt(only,'이 답변') : [
-          receipt(all.filter((item) => item.session === state.session),`이번 세션 · ${sessionHeading(currentSession(state) ?? { number:state.session })}`),
-          receipt(all,'게임 전체'),
-        ],
+        only ? receipt(only,'이 답변')
+          : receipt(all.filter((item) => item.session === state.session),`이번 세션 · ${sessionHeading(currentSession(state) ?? { number:state.session })}`),
         recent.length ? el('details',{ class:'record usage-recent' },el('summary',{},`최근 호출 ${recent.length}개`),
           el('ul',{ class:'scene-list' },recent.map((item) => {
             const cost = recordCost(item,prices);
