@@ -1392,3 +1392,37 @@
 .coc7-game-workspace .memory-room-switch { font-size: .76rem; font-weight: 700; }
 @keyframes coc7-pulse { 50% { opacity: .3; transform: scale(.75); } }
 @media (prefers-reduced-motion: reduce) { .coc7-game-workspace .memory-phase.is-running .memory-phase-dot { animation: none; } }
+
+/* Phones are for reading the story back: a one-line header without the portrait and illustration row,
+   bigger text, message buttons folded behind ⋯, the input folded to one line, and the panel tabs in one sideways row. */
+.coc7-game-workspace button.tools-toggle { display: none; }
+@container coc7 (width < 700px) {
+  .coc7-game-workspace .workspace-head { padding: .4rem .75rem; padding-top: max(.4rem,env(safe-area-inset-top)); }
+  .coc7-game-workspace .game-heading { flex-wrap: nowrap; align-items: baseline; min-width: 0; gap: .5rem; }
+  .coc7-game-workspace .game-heading h1 { min-width: 0; font-size: 1.05rem; }
+  .coc7-game-workspace .game-heading button.heading-edit { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .coc7-game-workspace .game-heading button.session-label { flex: none; font-size: .72rem; }
+  .coc7-game-workspace .chat-column { grid-template-rows: minmax(0,1fr) auto; }
+  .coc7-game-workspace .chat-heading { display: none; }
+  .coc7-game-workspace .timeline { gap: .75rem; padding: .7rem .45rem; }
+  .coc7-game-workspace .message-text { font-size: 15px; line-height: 1.78; }
+  .coc7-game-workspace .message-tools { top: auto; bottom: .2rem; right: .25rem; transform: none; opacity: 1; pointer-events: auto; }
+  .coc7-game-workspace .message-tools > button:not(.tools-toggle) { display: none; }
+  .coc7-game-workspace .message-tools.open > button { display: grid; }
+  .coc7-game-workspace .message-tools > button.tools-toggle {
+    display: grid; place-items: center; width: 1.6rem; min-height: 1.4rem; padding: 0;
+    border-color: transparent; background: transparent; box-shadow: none;
+    color: var(--coc-quiet); font-size: 1rem; font-weight: 800; line-height: 1;
+  }
+  .coc7-game-workspace .message-tools.open > button.tools-toggle { border-color: var(--coc-stroke); background: var(--coc-card); color: var(--coc-text); }
+  .coc7-game-workspace .message:not(.spacer):has(.message-tools) .message-body { padding-bottom: 1.5rem; }
+  .coc7-game-workspace .dice-card.message-with-tools { padding-bottom: 1.4rem; }
+  .coc7-game-workspace .compose.folded { gap: 0; padding: .45rem .55rem; padding-bottom: max(.45rem,env(safe-area-inset-bottom)); }
+  .coc7-game-workspace .compose.folded > :not(.compose-actions) { display: none; }
+  .coc7-game-workspace .compose.folded .compose-actions { flex-wrap: nowrap; }
+  .coc7-game-workspace button.compose-open { flex: 1; justify-content: flex-start; border-radius: 999px; color: var(--coc-quiet); font-size: .85rem; }
+  .coc7-game-workspace .compose:not(.folded) button.compose-open { display: none; }
+  .coc7-game-workspace .tabs { position: relative; display: flex; gap: .3rem; overflow-x: auto; scrollbar-width: none; }
+  .coc7-game-workspace .tabs::-webkit-scrollbar { display: none; }
+  .coc7-game-workspace .tabs button { flex: none; padding: .15rem .75rem; border-radius: 999px; white-space: nowrap; }
+}

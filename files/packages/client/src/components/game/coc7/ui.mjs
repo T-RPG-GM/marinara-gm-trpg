@@ -165,6 +165,8 @@ export function createWorkspace(container, adapter, options = {}) {
   let memoryRooms, memoryDraft;
   let analyzePending = null, extractPending = null, older = 120, flashRoll = '', revealArt = '';
   let timelineAtEnd = true, followLatest = false;
+  // Phones read more than they play, so the input folds to one line until it is tapped open.
+  let composeOpen = false;
   let timelineCache = null;
   let revealHandout = '';
   let skillAnalysisFor = null;
@@ -1068,11 +1070,27 @@ export function createWorkspace(container, adapter, options = {}) {
     });
   }
 
+  // On phones a message's buttons stay folded behind one ⋯ button so they do not cover the text.
+  function toolGroup(label, ...controls) {
+    const group = el('div',{ class:'message-tools',role:'group','aria-label':label });
+    const toggle = button('⋯',() => {
+      const open = !group.classList.contains('open');
+      for (const other of surface.querySelectorAll('.message-tools.open')) {
+        other.classList.remove('open');
+        other.querySelector('.tools-toggle')?.setAttribute('aria-expanded','false');
+      }
+      group.classList.toggle('open',open);
+      toggle.setAttribute('aria-expanded',String(open));
+    },{ class:'tools-toggle',title:`${label} 열기`,'aria-label':`${label} 열기`,'aria-expanded':'false' });
+    group.append(toggle,...controls);
+    return group;
+  }
+
   function messageTools(entry) {
     const control = (kind, label, handle, filled = false) => button(messageIcon(kind,filled),() => handle(entry),{
       title:label,'aria-label':label,'aria-haspopup':'dialog',disabled:!!running,
     });
-    return el('div',{ class:'message-tools',role:'group','aria-label':'메시지 작업' },
+    return toolGroup('메시지 작업',
       control('edit','메시지 수정',editMessage),
       control('marks','메시지 북마크 및 메모',markMessage,Boolean(entry.bookmark)),
       control('trash','메시지 삭제',deleteMessage));
@@ -1084,7 +1102,7 @@ export function createWorkspace(container, adapter, options = {}) {
       if (!roll) return null;
       // Dice results can be removed from the chat like any message; the roll stays in the Keeper's roll history.
       const card = rollCard(roll, flashRoll === roll.id, entry.correction);
-      if (!choosingScenes) card.prepend(el('div',{ class:'message-tools',role:'group','aria-label':'주사위 메시지 작업' },
+      if (!choosingScenes) card.prepend(toolGroup('주사위 메시지 작업',
         button(messageIcon('trash'),() => deleteMessage(entry),{ title:'주사위 메시지 삭제','aria-label':'주사위 메시지 삭제','aria-haspopup':'dialog',disabled:!!running })));
       card.classList.add('message-with-tools');
       return card;
@@ -1514,13 +1532,16 @@ export function createWorkspace(container, adapter, options = {}) {
         if (!event.repeat) send();
       }
     });
-    return el('div',{ class:'compose' },
+    const folded = !composeOpen && !draft.trim();
+    return el('div',{ class:`compose${folded ? ' folded' : ''}` },
       el('div',{ class:'compose-heading' },persona ? button(`페르소나 · ${persona.name}`,openPersonaName,{ class:'investigator-name',title:'페르소나 시트 열기' }) : el('label',{ for:'coc7-keeper-input' },'키퍼 입력'),
-        el('div',{ class:'compose-meta' },usageMeter(),note(state.settings.auto ? '자동 응답 켜짐' : '자동 응답 꺼짐'))),
+        el('div',{ class:'compose-meta' },usageMeter(),note(state.settings.auto ? '자동 응답 켜짐' : '자동 응답 꺼짐'),
+          button('접기',() => { composeOpen = false; render(); },{ class:'mobile-only compose-fold' }))),
       el('div',{ class:'compose-input' },composer,
         el('p',{ id:'coc7-keeper-error',class:'compose-error',role:'alert',hidden:true })),
       helper,
       el('div',{ class:'compose-actions' },
+        button('✎ 입력하기',() => { composeOpen = true; render(); document.getElementById('coc7-keeper-input')?.focus(); },{ class:'mobile-only compose-open' }),
         button(`AI 답변${pendingCount(state) ? ` (${pendingCount(state)}개 읽기)` : ''}`,answer,{ class:'primary' }),
         cancelRequestButton('chat')));
   }
@@ -3184,6 +3205,9 @@ export function createWorkspace(container, adapter, options = {}) {
           timeline,compose()),
         el('aside',{ class:'sidebar', 'aria-label':'캠페인 관리' },foldHandle,
           el('div',{ class:'sidebar-body', hidden:panelFolded || undefined },tabBar,panel))));
+    // Phones show the tabs as one sideways row; keep the open tab in view.
+    const pressedTab = tabBar.querySelector('[aria-pressed="true"]');
+    if (pressedTab && tabBar.scrollWidth > tabBar.clientWidth) tabBar.scrollLeft = pressedTab.offsetLeft - (tabBar.clientWidth - pressedTab.offsetWidth) / 2;
     options.setHandoutDescriptions(descriptionSlots);
     updateNotice();
     if (artworkProbe) surface.append(el('div',{ hidden:true },artworkProbe));
