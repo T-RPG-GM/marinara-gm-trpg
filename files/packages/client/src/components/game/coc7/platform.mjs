@@ -330,15 +330,18 @@ export function getGameAdapter(chatId, call) {
       return { store, names, notebook:world?.notes };
     },
     async library() {
-      const [cards, presets, connections, chat, personas] = await Promise.all(
-        ['/characters','/prompts','/connections',`/chats/${encodeURIComponent(chatId)}`,'/characters/personas/list'].map(async (route) => (await http(route)).json()),
+      const [cards, presets, connections, chat, personas, lorebooks] = await Promise.all(
+        ['/characters','/prompts','/connections',`/chats/${encodeURIComponent(chatId)}`,'/characters/personas/list','/lorebooks'].map(async (route) => (await http(route)).json()),
       );
       const ready = await http(`${path}/status`).then(() => true, () => false);
       return { cards:cards.map((row) => {
         let name = row.name;
         try { name ||= (typeof row.data === 'string' ? JSON.parse(row.data) : row.data)?.name; } catch { /* Use the fallback below. */ }
         return { id:row.id, name:name || '이름 없는 카드' };
-      }), personas, presets, connections:connections.filter((item) => !['image_generation','video_generation','audio_generation','audio','decision'].includes(item.provider)), chats:[chat], ready };
+      }), personas, presets, connections:connections.filter((item) => !['image_generation','video_generation','audio_generation','audio','decision'].includes(item.provider)), chats:[chat], ready,
+        lorebooks:(Array.isArray(lorebooks) ? lorebooks : []).filter((book) => !book.hiddenFromLibrary).map((book) => ({
+          id:book.id, name:book.name || '이름 없는 로어북', enabled:book.enabled !== false && book.enabled !== 'false',
+          characterIds:[book.characterId,...(Array.isArray(book.characterIds) ? book.characterIds : [])].filter(Boolean) })) };
     },
     async card(id) {
       const row = await (await http(`/characters/${encodeURIComponent(id)}`)).json();
@@ -393,7 +396,8 @@ export function getGameAdapter(chatId, call) {
       const { cardId, connectionId, presetId } = state.settings;
       // Which preset sections each preset sends in this game; a preset without an entry uses the automatic choice.
       const presetSections = state.settings.presetSections && typeof state.settings.presetSections === 'object' ? state.settings.presetSections : {};
-      const response = await http(`${path}/generate`, 'POST', { cardId, connectionId, presetId, presetSections, ...input }, signal);
+      const lorebookIds = Array.isArray(state.settings.lorebookIds) ? state.settings.lorebookIds : [];
+      const response = await http(`${path}/generate`, 'POST', { cardId, connectionId, presetId, presetSections, lorebookIds, ...input }, signal);
       if (!response.body) throw Error('브라우저가 응답 스트림을 열 수 없습니다.');
       const reader = response.body.getReader();
       const decoder = new TextDecoder();

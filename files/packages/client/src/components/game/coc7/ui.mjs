@@ -142,7 +142,7 @@ function messageIcon(kind, filled = false) {
 
 export function createWorkspace(container, adapter, options = {}) {
   let vault, state, status = '', statusKind = '', running, draft = '', active = 'sheet', closed = false;
-  let library = { cards:[], presets:[], connections:[], chats:[], personas:[], ready:false };
+  let library = { cards:[], presets:[], connections:[], chats:[], personas:[], lorebooks:[], ready:false };
   let libraryError = '', libraryLoaded = false;
   let memoryRooms, memoryDraft;
   let analyzePending = null, extractPending = null, older = 120, flashRoll = '', revealArt = '';
@@ -1612,6 +1612,7 @@ export function createWorkspace(container, adapter, options = {}) {
       note(library.ready ? 'Marinara 게임 서버 연결됨' : (libraryError || '게임 서버 연결을 확인하는 중입니다.')),
       note(`프리셋 · ${selected?.name ?? 'Marinara 기본값'}`),
       selected?.id ? presetSectionPicker(selected) : null,
+      lorebookPicker(),
       form(async (values) => {
         const cardId = String(values.get('cardId'));
         const card = cardId ? await adapter.card(cardId) : null;
@@ -1633,6 +1634,37 @@ export function createWorkspace(container, adapter, options = {}) {
         field('삽화 프롬프트 모델', select('illustrationConnection', [['','이미지 분석 모델 따르기'], ...library.connections.map((item) => [item.id,item.name])], state.settings.illustrationConnection ?? '')),
       ), '연결 저장'),
       button('Marinara 목록 새로고침', () => void run(loadLibrary)));
+  }
+
+  /* Which lorebooks the investigator's answers draw on. Unpicked means the bot card's own lorebooks;
+     the Keeper can pick any lorebooks instead. Entries still activate only by the scene's keywords. */
+  function lorebookPicker() {
+    const picked = Array.isArray(state.settings.lorebookIds) ? state.settings.lorebookIds : null;
+    const cardId = state.settings.cardId;
+    const own = (book) => !!cardId && book.characterIds.includes(cardId);
+    const books = [...library.lorebooks].sort((a,b) => Number(own(b)) - Number(own(a)) || a.name.localeCompare(b.name,'ko'));
+    const missing = picked ? picked.filter((id) => !books.some((book) => book.id === id)).length : 0;
+    const modeLabel = picked ? `직접 고름 · ${picked.length}개` : `봇카드 로어북 · ${books.filter(own).length}개`;
+    const save = (value, message) => action((next) => {
+      if (value == null) delete next.settings.lorebookIds;
+      else next.settings.lorebookIds = value;
+    },message)();
+    const boxes = books.map((book) => {
+      const box = check('lorebookId',picked ? picked.includes(book.id) : own(book));
+      box.value = book.id;
+      return el('label',{ class:'preset-section' },box,
+        el('span',{ class:'preset-section-name' },book.name,
+          own(book) ? el('small',{},'봇카드') : null,
+          book.enabled ? null : el('small',{},'꺼짐 · 안 보내요')));
+    });
+    const body = !library.ready && !books.length ? [note('Marinara 목록을 새로고침해 로어북을 불러오세요.')] : [
+      note('AI 답변에 넣을 로어북을 골라요. 고르지 않으면 봇카드에 연결된 로어북을 써요. 고른 로어북도 지금 장면의 단어로 켜진 항목만 들어가요. Marinara에서 꺼 둔 로어북은 보내지 않아요.'),
+      missing ? note(`고른 로어북 중 ${missing}개를 찾을 수 없어요. 다시 저장하면 빠져요.`) : null,
+      books.length ? form((values) => save(values.getAll('lorebookId').map(String),'고른 로어북을 저장했어요.'),
+        [el('div',{ class:'preset-section-list' },boxes)],'고른 로어북 저장') : note('Marinara에 로어북이 없어요.'),
+      row(button('봇카드 로어북 쓰기',() => save(null,'봇카드에 연결된 로어북을 써요.'),{ disabled:!!running || !picked }))];
+    return el('details',{ class:'record','data-disclosure-id':'investigator-lorebooks' },
+      el('summary',{},`조사자 로어북 · ${modeLabel}`),...body.filter(Boolean));
   }
 
   /* Which parts of the preset a CoC turn sends. Automatic keeps the writing-style sections and {{기억}};
