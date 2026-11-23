@@ -167,6 +167,8 @@ export function createWorkspace(container, adapter, options = {}) {
   let timelineAtEnd = true, followLatest = false;
   // Phones read more than they play, so the input folds to one line until it is tapped open.
   let composeOpen = false;
+  // Session wrap-up: the button shows it is working, and the record of the wrap-up just made opens by itself.
+  let wrappingUp = false, justWrappedAt = null;
   // A phone reader can tuck the input away entirely; a small ✎ button brings it back. Remembered per browser.
   let composeHidden = false;
   try { composeHidden = window.localStorage.getItem('coc7.composeHidden') === '1'; } catch { /* Start shown. */ }
@@ -2926,13 +2928,17 @@ export function createWorkspace(container, adapter, options = {}) {
     const personaSheetNow = persona ? personaSheet(state,persona.id) : null;
     const checked = (sheet) => sheet.skills.filter((skill) => skill.experience).length;
     const session = currentSession(state);
-    const last = session?.wrapUp;
-    const record = last ? el('details',{ class:'record' },
-      el('summary',{},`이 세션 마무리 기록 · ${new Date(last.at).toLocaleString('ko-KR')}`),
+    // The newest wrapped-up session, which is the previous one right after "start the next session".
+    const wrapped = [...state.sessions].reverse().find((item) => item.wrapUp);
+    const last = wrapped?.wrapUp;
+    const summaryText = last?.summary ? investigatorNotes(state).findLast((item) => item.kind === 'summary' && item.session === wrapped.number)?.text : '';
+    const record = last ? el('details',{ class:'record',open:last.at === justWrappedAt },
+      el('summary',{},`${sessionHeading(wrapped)} 마무리 기록 · ${new Date(last.at).toLocaleString('ko-KR')}`),
       last.growth.length ? el('ul',{ class:'scene-list' },last.growth.map((item) =>
         el('li',{},`${item.who} · ${item.skill} · D100 ${item.roll} · ${item.gain ? `+${item.gain} → ${item.value}` : '성장 없음'}`))) : note('성장 굴림 없음'),
       last.san.length ? el('ul',{ class:'scene-list' },last.san.map((item) => el('li',{},`${item.who} · SAN +${item.gain} → ${item.san}`))) : null,
-      last.summary ? note('세션 요약은 조사 노트에 기록되었습니다.') : null) : null;
+      summaryText ? el('div',{ class:'section quiet' },note('AI 세션 요약 · 조사 노트에도 기록됨'),el('p',{ class:'message-text' },summaryText))
+        : last.summary ? note('세션 요약은 조사 노트에 기록되었습니다.') : null) : null;
     return section('세션 마무리',
       note(`${sessionHeading(session ?? { number:state.session })}을(를) 한 번에 정리합니다.`),
       record,
@@ -2941,6 +2947,10 @@ export function createWorkspace(container, adapter, options = {}) {
         const sanExpression = textValue(values.get('san'),40);
         const sanFor = values.getAll('sanFor').map(String);
         let summary = '';
+        // The button says it is working, since the AI summary can take a while.
+        wrappingUp = true;
+        render();
+        try {
         if (values.has('summary')) {
           summary = await summarizeSession(state,adapter,() => announce('AI가 이번 세션을 요약하는 중…'),signal);
           if (closed || signal?.aborted) return;
@@ -2954,6 +2964,8 @@ export function createWorkspace(container, adapter, options = {}) {
             audit(next,'새 세션 시작');
           }
         });
+        justWrappedAt = currentSession(state)?.wrapUp?.at ?? [...state.sessions].reverse().find((item) => item.wrapUp)?.wrapUp.at ?? null;
+        } finally { wrappingUp = false; }
         const summaryNote = summary ? ' · 요약 기록' : values.has('summary') ? ' · 이번 세션에 공개 기록이 없어 요약은 건너뜀' : '';
         announce(`세션 마무리 완료 · 성장 굴림 ${result.growth.length}건 · SAN 회복 ${result.san.length}건${summaryNote}`,'ok');
       }, [
@@ -2965,7 +2977,7 @@ export function createWorkspace(container, adapter, options = {}) {
         toggle('AI가 이번 세션을 요약해 조사 노트에 기록',check('summary',true)),
         toggle('마무리 후 다음 세션 시작',check('next',false)),
         field('다음 세션 이름',input('nextName','',{ maxlength:150,placeholder:`세션 ${state.session + 1}` })),
-      ],'세션 마무리','wrap-up-form'));
+      ],wrappingUp ? '마무리하는 중…' : '세션 마무리','wrap-up-form'));
   }
 
   /* Replay export: the public chat as a readable HTML document. */
