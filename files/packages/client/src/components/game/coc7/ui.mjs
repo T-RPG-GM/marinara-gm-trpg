@@ -1953,7 +1953,7 @@ export function createWorkspace(container, adapter, options = {}) {
     const ageHint = !sheet.finalized && !sheet.house && !sheet.ageApplied
       ? note(`연령 보정은 선택이에요 · ${sheet.age}세 규칙은 EDU 향상 ${age.eduChecks}회${age.physicalLoss ? ` · 신체 −${age.physicalLoss}` : ''}${age.eduLoss ? ` · EDU −${age.eduLoss}` : ''}. 적용하지 않아도 생성 확정할 수 있어요.`) : null;
     const warnings = issues.map((issue,index) => el('p',{ class:'warning',tabindex:index === 0 ? -1 : undefined },issue));
-    const pointSummary = creationPointUsage(sheet).filter(({ text }) => !issues.includes(text)).map(({ text }) => note(text));
+    const pointSummary = creationPointUsage(sheet).map(({ text, overBudget }) => note(overBudget ? `${text} · 넘었지만 생성 확정할 수 있어요` : text));
     const finishCreation = () => {
       // Say why the sheet cannot be finalized yet instead of only moving focus to a collapsed warning.
       if (warnings.length) {

@@ -185,7 +185,7 @@ export function creationIssues(sheet, requireAge = true) {
     if (startingValue > 99 || startingValue < skill.base) issues.push(`${skill.name}의 생성 수치가 기본값~99 범위를 벗어났습니다.`);
     if (hasManualOccupationPoints(skill) && assignedOccupationPoints(skill) !== skill.occupationPoints) issues.push(`${skill.name}에 할당한 직업점이 유효하지 않습니다.`);
   }
-  for (const { text, overBudget } of creationPointUsage(sheet)) if (overBudget) issues.push(text);
+  // Going over the skill point budget is only shown, never blocks finalizing (Keeper's choice).
   if (requireAge && (!sheet.ageApplied || sheet.ageApplied.age !== sheet.age || sheet.ageApplied.signature !== JSON.stringify(sheet.attributes))) {
     issues.push(`연령 보정 확인 필요 · EDU 향상 ${age.eduChecks}회, EDU −${age.eduLoss}, 신체 −${age.physicalLoss}, APP −${age.appearanceLoss}`);
   }
