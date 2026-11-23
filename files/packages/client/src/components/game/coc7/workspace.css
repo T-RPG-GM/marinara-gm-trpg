@@ -505,7 +505,8 @@
 .coc7-game-workspace .skill-edit > :is(.grid,.toggle) { grid-column: 1 / -1; }
 .coc7-game-workspace .skill-actions { gap: .3rem; }
 .coc7-game-workspace .handout-message, .coc7-game-workspace .handout-fields { display: grid; gap: .42rem; }
-.coc7-game-workspace .handout-message { grid-template-columns: minmax(0,1fr); }
+.coc7-game-workspace .handout-message { grid-template-columns: minmax(0,1fr); text-align: center; }
+.coc7-game-workspace .message.artifact > .message-head { justify-content: center; text-align: center; }
 .coc7-game-workspace .handout-description { color: inherit; line-height: 1.67; white-space: pre-wrap; }
 .coc7-game-workspace .handout-description :is(h1,h2,h3,h4,h5,h6) { font-weight: 700; }
 .coc7-game-workspace .handout-description :is(ul,ol) { padding-left: 1.35em; }
