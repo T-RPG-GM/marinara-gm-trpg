@@ -164,6 +164,7 @@ export function createWorkspace(container, adapter, options = {}) {
   let libraryError = '', libraryLoaded = false;
   let memoryRooms, memoryDraft;
   let analyzePending = null, extractPending = null, older = 120, flashRoll = '', revealArt = '';
+  let timelineAtEnd = true, followLatest = false;
   let timelineCache = null;
   let revealHandout = '';
   let skillAnalysisFor = null;
@@ -1573,6 +1574,7 @@ export function createWorkspace(container, adapter, options = {}) {
       }
     });
     if (draft === typed) draft = '';
+    followLatest = true;
     announce('');
   }
 
@@ -3080,7 +3082,9 @@ export function createWorkspace(container, adapter, options = {}) {
     const oldComposer = surface.querySelector('#coc7-keeper-input');
     const caret = oldComposer === document.activeElement ? [oldComposer.selectionStart,oldComposer.selectionEnd] : null;
     const panelScroll = oldPanel?.dataset.tab === active ? oldPanel.scrollTop : 0;
-    const end = oldTimeline ? oldTimeline.scrollHeight - oldTimeline.scrollTop - oldTimeline.clientHeight < 75 : true;
+    // Sending a message always shows it; otherwise the chat stays at the bottom only while the reader is there.
+    const end = !oldTimeline || timelineAtEnd || followLatest;
+    followLatest = false;
     const rollChanged = flashRoll && !surface.querySelector('.rolling');
     const oldScroll = oldTimeline?.scrollTop ?? 0;
     const artworkKey = featured?.assetId || featured?.remote;
@@ -3104,6 +3108,11 @@ export function createWorkspace(container, adapter, options = {}) {
             !state.settings.cardId ? button('AI 조사자 설정',() => { active = 'sessions'; smallPane = true; render(); },{ class:'primary' }) : null,
             button((currentMemoryLink(state) || state.memoryReference) ? '연결된 기억 서재 보기' : '시작할 때 참고할 기억 서재 선택',openMemory,{ disabled:!!running }))));
       timelineCache = { key:timelineKey, node:timeline, slots:descriptionSlots };
+      // Whether the chat follows the newest message is decided by the reader's own scrolling, so a chat area that
+      // shrinks or grows (suggestions, a resized input, late images) does not count as scrolling away.
+      timeline.addEventListener('scroll',() => {
+        timelineAtEnd = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 75;
+      },{ passive:true });
     }
     const availableTabs = Object.entries(tabs).filter(([key]) => key !== 'memory' || adapter.memoryRooms);
     const tabBar = el('nav',{ class:'tabs', 'aria-label':'캠페인 패널' },availableTabs.map(([key,label]) =>
