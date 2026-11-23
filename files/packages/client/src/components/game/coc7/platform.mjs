@@ -459,6 +459,13 @@ export function getGameAdapter(chatId, call) {
         { title:state.title, prompt, ...(appearances.length ? { appearances } : {}), ...(writer ? { promptConnectionId:writer } : {}) }, signal);
       const item = await response.json();
       if (!item.url?.startsWith('/api/gallery/')) throw Error('Marinara에서 유효한 갤러리 파일을 반환하지 않았습니다.');
+      // The prompt writer's call goes on the receipt like the game's own calls (the image itself is billed by its service).
+      const call = item.promptCall;
+      if (call && typeof call === 'object') {
+        usageListener?.({ at:new Date().toISOString(), task:'illustration', model:String(call.model ?? ''), provider:String(call.provider ?? ''),
+          connection:String(call.connection ?? ''), ...(call.pricing ? { pricing:call.pricing } : {}),
+          ...(call.usage ? { usage:call.usage } : { missing:true }) });
+      }
       // The final prompt the image model received, kept with the illustration.
       return { url:item.url, prompt:typeof item.prompt === 'string' ? item.prompt.slice(0,12000) : '' };
     },

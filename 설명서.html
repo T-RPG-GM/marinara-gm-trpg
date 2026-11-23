@@ -185,6 +185,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
     <a href="#art">삽화</a>
     <a href="#memory">기억 서재</a>
     <a href="#tokens">토큰 아끼기</a>
+    <a href="#receipt">영수증</a>
     <a href="#messages">메시지 다루기</a>
     <a href="#install">설치와 업데이트</a>
     <a href="#trouble">문제가 생기면</a>
@@ -609,6 +610,33 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
       </div>
     </section>
 
+    <section id="receipt">
+      <h2>영수증</h2>
+      <p class="intro">입력창 옆의 토큰 사용량(<code>tok</code>)을 누르면 영수증이 열려요. 이번 세션에 쓴 토큰과 비용 합계, 최근 호출 20개, 모델 단가 설정이 있어요. AI 메시지의 토큰 칩에서 <strong>영수증 보기</strong>를 누르면 그 답변 하나의 영수증이 열려요.</p>
+      <div class="pair">
+        <div class="panel">
+          <h3>영수증에 기록되는 것</h3>
+          <ul>
+            <li><strong>AI 답변</strong> · 다시 생성 포함</li>
+            <li><strong>능력치 자동 적용</strong> · 봇카드를 보고 시트 숫자를 자동으로 채우는 호출</li>
+            <li><strong>수치 제안</strong> · 능력치 자동 적용 중에 한 번 더 부르는 호출</li>
+            <li><strong>이미지 분석</strong> · 핸드아웃 설명 제안</li>
+            <li><strong>세션 요약</strong></li>
+            <li><strong>삽화 프롬프트</strong> · 삽화를 그리거나 그림 위 <strong>다시 그리기</strong>를 누를 때, 그림용 태그를 쓰는 텍스트 모델의 호출</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>기록되지 않는 것</h3>
+          <ul>
+            <li><strong>NovelAI 그림 자체</strong> · NovelAI 구독 포인트(Anlas)로 처리돼서 금액으로 계산할 수 없어요.</li>
+            <li><strong>기억 서재 정리</strong> · 기억 서재 확장이 자기 연결로 따로 청구해요.</li>
+            <li><strong>실패한 호출</strong> · 삽화 프롬프트는 썼는데 그림 생성이 실패하면, 그 프롬프트 비용은 기록되지 않아요. 드문 경우예요.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="intro">비용은 NanoGPT · OpenRouter · Vertex · LinkAPI 연결이면 가격표에서 단가를 자동으로 가져와요. 다른 연결은 영수증의 <strong>모델 단가</strong>에서 직접 넣으면 계산돼요. 원화 금액은 영수증의 <strong>환율</strong>을 정해 두면 함께 보여요.</p>
+    </section>
+
     <section id="messages">
       <h2>메시지 다루기</h2>
       <div class="pair">
@@ -684,7 +712,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
       </div>
     </section>
 
-    <footer>Marinara Engine 2.5.2 기준으로 만든 마리나라 GM 전용 TRPG 1.1.0 설명서예요. 비공식 팬 프로젝트이고, 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요.</footer>
+    <footer>Marinara Engine 2.5.2 기준으로 만든 마리나라 GM 전용 TRPG 1.1.1 설명서예요. 비공식 팬 프로젝트이고, 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요.</footer>
   </main>
 </div>
 </body>

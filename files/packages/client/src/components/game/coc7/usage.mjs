@@ -3,7 +3,7 @@
    Records come from the server's "done" event; prices are the Keeper's own, in USD per 1M tokens. */
 
 export const usageLimit = 5000;
-export const usageTasks = { turn:'AI 답변', sheet:'수치 제안', 'sheet-profile':'능력치 자동 적용', vision:'이미지 분석', summary:'세션 요약' };
+export const usageTasks = { turn:'AI 답변', sheet:'수치 제안', 'sheet-profile':'능력치 자동 적용', vision:'이미지 분석', summary:'세션 요약', illustration:'삽화 프롬프트' };
 export const usageParts = [
   ['input','일반 입력'], ['cacheRead','캐시 읽기(hit)'], ['cacheWrite','캐시 쓰기(created)'], ['output','출력 (추론 포함)'],
 ];

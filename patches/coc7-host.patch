@@ -328,10 +328,10 @@ index 64e7559fa..2453fd075 100644
      }
  
 diff --git a/packages/server/src/routes/gallery.routes.ts b/packages/server/src/routes/gallery.routes.ts
-index c01e739..53e5c83 100644
+index c01e739..115e9a1 100644
 --- a/packages/server/src/routes/gallery.routes.ts
 +++ b/packages/server/src/routes/gallery.routes.ts
-@@ -11,7 +11,9 @@ import {
+@@ -11,13 +11,16 @@ import {
    findImageStyleProfile,
    parseChatImageGenerationRecord,
    LOCAL_SIDECAR_CONNECTION_ID,
@@ -341,7 +341,14 @@ index c01e739..53e5c83 100644
    resolveGameSetupArtStylePrompt,
    VIDEO_GENERATION_SETTINGS_KEY,
    normalizeVideoGenerationUserSettings,
-@@ -38,7 +40,7 @@ import {
+ } from "@marinara-engine/shared";
+ import { createGalleryStorage } from "../services/storage/gallery.storage.js";
+ import { listSpriteCatalog } from "../services/sprites/sprite-catalog.js";
++import { cocPriceFor } from "./coc7-prices.js";
+ import { resolveChatUserIdentity } from "../services/chat-user-identity.js";
+ import { createChatsStorage } from "../services/storage/chats.storage.js";
+ import { createCharactersStorage } from "../services/storage/characters.storage.js";
+@@ -38,7 +41,7 @@ import {
    resolveConnectionImageDefaults,
    resolveConnectionImageQuality,
  } from "../services/image/image-generation-defaults.js";
@@ -350,7 +357,7 @@ index c01e739..53e5c83 100644
  import {
    compileImagePrompt,
    formatImageStylePromptGuidance,
-@@ -60,6 +62,8 @@ import {
+@@ -60,6 +63,8 @@ import {
  } from "../services/image/gallery-file-lifecycle.js";
  import { resolveImageConnectionFallback } from "../services/generation/media-connection-fallback.js";
  import { resolveIllustratorPromptRuntime } from "../services/generation/illustrator-prompt-runtime.js";
@@ -359,7 +366,7 @@ index c01e739..53e5c83 100644
  import { resolveIllustratorImageConnectionId } from "../services/generation/illustrator-background-generation.js";
  import { resolveConversationSelfieSystemPrompt } from "../services/conversation/selfie-prompt.js";
  import { appendImagePromptInstructions } from "../services/generation/image-prompt-instructions.js";
-@@ -102,6 +106,8 @@ import {
+@@ -102,6 +107,8 @@ import {
    toVideoReferenceImage,
  } from "../services/video/chat-video-generation.js";
  import {
@@ -368,7 +375,7 @@ index c01e739..53e5c83 100644
    readPreferredCharacterReferenceImage,
    readPreferredPersonaReferenceImage,
  } from "../services/image/illustrator-references.js";
-@@ -213,9 +219,61 @@ const generateGalleryImageSchema = z.object({
+@@ -213,9 +220,61 @@ const generateGalleryImageSchema = z.object({
    mapsArtworkContext: mapsArtworkContextSchema.optional(),
    promptOverride: z.string().trim().min(1).max(200_000).optional(),
    negativePromptOverride: z.string().max(200_000).optional(),
@@ -430,7 +437,7 @@ index c01e739..53e5c83 100644
  /** Re-send an existing image's final request, possibly edited (#7767). */
  const regenerateGalleryImageSchema = z.object({
    prompt: z.string().trim().min(1).max(200_000),
-@@ -246,6 +304,11 @@ const previewGalleryImagesSchema = z.object({
+@@ -246,6 +305,11 @@ const previewGalleryImagesSchema = z.object({
          title: z.string().trim().min(1).max(200),
          prompt: z.string().trim().min(1).max(7_000),
          mapsArtworkContext: mapsArtworkContextSchema.optional(),
@@ -442,7 +449,7 @@ index c01e739..53e5c83 100644
        }),
      )
      .min(1)
-@@ -375,7 +438,8 @@ async function resolveGalleryImageConnection(
+@@ -375,7 +439,8 @@ async function resolveGalleryImageConnection(
      logger.warn(err, "[gallery/generate-image] Failed to read Illustrator settings");
      return null;
    });
@@ -452,7 +459,7 @@ index c01e739..53e5c83 100644
      chatMode,
      metadata,
      parseJsonRecord(illustrator?.settings).imageConnectionId,
-@@ -391,7 +455,7 @@ async function resolveGalleryImageConnection(
+@@ -391,7 +456,7 @@ async function resolveGalleryImageConnection(
      );
    }
    connection ??= await connections.getDefaultForImageGeneration();
@@ -461,7 +468,7 @@ index c01e739..53e5c83 100644
  }
  
  function readStringArray(value: unknown): string[] {
-@@ -561,13 +625,15 @@ export async function galleryRoutes(app: FastifyInstance) {
+@@ -561,13 +626,15 @@ export async function galleryRoutes(app: FastifyInstance) {
      }
  
      const metadata = parseChatMetadata(chat.metadata);
@@ -480,7 +487,7 @@ index c01e739..53e5c83 100644
      if (!imageConnection) {
        throw new GalleryImageRequestError(
          400,
-@@ -601,6 +667,10 @@ export async function galleryRoutes(app: FastifyInstance) {
+@@ -601,6 +668,10 @@ export async function galleryRoutes(app: FastifyInstance) {
  
      return {
        chat,
@@ -491,7 +498,7 @@ index c01e739..53e5c83 100644
        imageConnection,
        imageSettings,
        imageDefaults,
-@@ -621,6 +691,95 @@ export async function galleryRoutes(app: FastifyInstance) {
+@@ -621,6 +692,128 @@ export async function galleryRoutes(app: FastifyInstance) {
      };
    }
  
@@ -520,6 +527,8 @@ index c01e739..53e5c83 100644
 +    const usePromptWriter = !input.promptOverride && (promptConnectionId || readTrimmedString(metadata.illustratorPromptConnectionId));
 +    const styleInstruction = [context.styleProfile.styleText, context.artStyle].filter(Boolean).join("\n");
 +    let plan: Awaited<ReturnType<typeof writeManualIllustratorPromptPlan>>["plan"] | undefined;
++    // The prompt writer's tokens go back with the picture, so the CoC receipt counts them like its other calls.
++    let promptCall: { model: string; provider: string; connection: string; pricing: unknown; usage: Record<string, number> | null } | undefined;
 +    if (usePromptWriter) {
 +      const runtime = await resolveIllustratorPromptRuntime({
 +        // The connection picked in the CoC settings wins over the chat-level Illustrator override.
@@ -529,9 +538,19 @@ index c01e739..53e5c83 100644
 +        connections,
 +        resolveBaseUrl,
 +      });
++      type CallUsage = { promptTokens?: number; cachedPromptTokens?: number; cacheWritePromptTokens?: number; completionTokens?: number; completionReasoningTokens?: number };
++      let usage: CallUsage | undefined;
++      // ponytail: counts the one chatComplete the writer makes; a fallback connection is billed under the primary's model.
++      const counted = Object.create(runtime.provider) as typeof runtime.provider;
++      counted.chatComplete = async (...args: Parameters<typeof runtime.provider.chatComplete>) => {
++        const result = await runtime.provider.chatComplete(...args);
++        usage = result.usage as CallUsage | undefined;
++        return result;
++      };
 +      ({ plan } = await writeManualIllustratorPromptPlan({
 +        illustratorAgent: {
 +          ...runtime,
++          provider: counted,
 +          id: illustrator?.id ?? "builtin:illustrator",
 +          type: "illustrator",
 +          name: illustrator?.name ?? "Illustrator",
@@ -557,6 +576,23 @@ index c01e739..53e5c83 100644
 +        signal,
 +        debugLog: context.debugLog,
 +      }));
++      const connection = await connections.getWithKey(runtime.connectionId).catch(() => null);
++      const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0);
++      promptCall = {
++        model: runtime.model,
++        provider: connection?.provider ?? "",
++        connection: connection?.name ?? "",
++        pricing: connection ? await cocPriceFor(app, connection, runtime.model).catch(() => null) : null,
++        usage: usage
++          ? {
++              input: count(usage.promptTokens),
++              cacheRead: count(usage.cachedPromptTokens),
++              cacheWrite: count(usage.cacheWritePromptTokens),
++              output: count(usage.completionTokens),
++              reasoning: count(usage.completionReasoningTokens),
++            }
++          : null,
++      };
 +    }
 +
 +    const written = plan ? removeCopiedPromptGuidance(plan.prompt, [styleInstruction, imageConnection.imagePromptInstructions]) : input.prompt;
@@ -581,13 +617,17 @@ index c01e739..53e5c83 100644
 +      negativePromptOverride: input.negativePromptOverride,
 +    });
 +    const size = resolveIllustratorImageSize(imageSettings.game, plan?.aspectRatio);
-+    return { ...reviewed, ...resolveImagePromptReviewSize({ connection: imageConnection, prompt: reviewed.prompt, ...size, imageDefaults }) };
++    return {
++      ...reviewed,
++      ...resolveImagePromptReviewSize({ connection: imageConnection, prompt: reviewed.prompt, ...size, imageDefaults }),
++      ...(promptCall ? { promptCall } : {}),
++    };
 +  }
 +
    async function compileGalleryImageRequest(
      context: Awaited<ReturnType<typeof resolveGalleryImageGenerationContext>>,
      input: {
-@@ -629,8 +788,12 @@ export async function galleryRoutes(app: FastifyInstance) {
+@@ -629,8 +822,12 @@ export async function galleryRoutes(app: FastifyInstance) {
        mapsArtworkContext?: z.infer<typeof mapsArtworkContextSchema>;
        promptOverride?: string;
        negativePromptOverride?: string;
@@ -600,7 +640,7 @@ index c01e739..53e5c83 100644
      const compiled = await buildBackgroundProviderPrompt({
        chatId: context.chat.id,
        locationSlug: input.title?.trim() || "Gallery image",
-@@ -1921,7 +2084,7 @@ export async function galleryRoutes(app: FastifyInstance) {
+@@ -1921,7 +2118,7 @@ export async function galleryRoutes(app: FastifyInstance) {
            const compiled = await compileGalleryImageRequest(context, item);
            return {
              id: item.id,
@@ -609,7 +649,7 @@ index c01e739..53e5c83 100644
              title: item.title,
              sourcePrompt: item.prompt,
              prompt: compiled.prompt,
-@@ -1962,7 +2125,8 @@ export async function galleryRoutes(app: FastifyInstance) {
+@@ -1962,7 +2159,8 @@ export async function galleryRoutes(app: FastifyInstance) {
          return reply.status(err.statusCode).send({ error: err.message });
        }
        logger.warn(err, "[gallery/generate-image] Failed to preview Gallery image requests for chat %s", chatId);
@@ -619,7 +659,7 @@ index c01e739..53e5c83 100644
      }
    });
  
-@@ -1971,21 +2135,23 @@ export async function galleryRoutes(app: FastifyInstance) {
+@@ -1971,21 +2169,23 @@ export async function galleryRoutes(app: FastifyInstance) {
      if (!isValidChatId(chatId)) return reply.status(400).send({ error: "Invalid chatId" });
  
      const input = generateGalleryImageSchema.parse(req.body);
@@ -647,6 +687,19 @@ index c01e739..53e5c83 100644
      context.debugLog("[debug/gallery/generate-image] prompt:\n%s", compiledPrompt.prompt);
      if (compiledPrompt.negativePrompt) {
        context.debugLog("[debug/gallery/generate-image] negative prompt:\n%s", compiledPrompt.negativePrompt);
+@@ -2032,7 +2232,11 @@ export async function galleryRoutes(app: FastifyInstance) {
+       if (!image) throw new Error("Generated Gallery image metadata could not be saved");
+       metadataSaved = true;
+       logger.info("[gallery/generate-image] Generated Gallery image for chat %s", chatId);
+-      return { ...image, url: buildGalleryImageUrl(image, chatId) };
++      return {
++        ...image,
++        url: buildGalleryImageUrl(image, chatId),
++        ...("promptCall" in compiledPrompt && compiledPrompt.promptCall ? { promptCall: compiledPrompt.promptCall } : {}),
++      };
+     } catch (err) {
+       if (savedFilePath && !metadataSaved) {
+         try {
 diff --git a/packages/server/src/routes/index.ts b/packages/server/src/routes/index.ts
 index 7d001d41a..70b147fed 100644
 --- a/packages/server/src/routes/index.ts
