@@ -1,4 +1,4 @@
-/* global FileReader, TextDecoder, atob, File, URL, Blob, document, setTimeout */
+/* global FileReader, createImageBitmap, TextDecoder, atob, File, URL, Blob, document, setTimeout */
 import { SCHEMA, cardFields, imageTypes, scenarioBriefing, secretBriefing, sessionLog, sessionSummaries, sheetFor, textValue, turnPayload, uid, validateCampaign } from './campaign.mjs';
 import { currentMemoryLink, isMemoryRoomId, memoryBriefing, pickMemories, readMemoryRooms } from './memory.mjs';
 import { ATTR, normalized } from './rules.mjs';
@@ -20,6 +20,8 @@ export async function assetFromFile(file, imagesOnly = false) {
   const claimed = mimeByExtension[file.name.split('.').pop().toLowerCase()] ?? file.type;
   const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   const latin = new TextDecoder('latin1').decode(bytes);
+  // Many AI models refuse AVIF, so an AVIF image is stored as a PNG copy instead.
+  if (latin.slice(4,8) === 'ftyp' && ['avif','avis'].includes(latin.slice(8,12))) return assetFromFile(await avifToPng(file), imagesOnly);
   const type = bytes[0] === 137 && latin.slice(1,4) === 'PNG' ? 'image/png'
     : bytes[0] === 255 && bytes[1] === 216 ? 'image/jpeg'
     : latin.startsWith('RIFF') && latin.slice(8,12) === 'WEBP' ? 'image/webp'
@@ -31,6 +33,20 @@ export async function assetFromFile(file, imagesOnly = false) {
   }
   const id = uid();
   return { meta:{ id, name:textValue(file.name, 180), type, size:file.size }, blob:file.slice(0,file.size,type) };
+}
+
+async function avifToPng(file) {
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) throw Error('이 브라우저에서 AVIF 이미지를 열 수 없습니다. PNG로 저장해 올려 주세요.');
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0);
+  bitmap.close();
+  const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!png) throw Error('AVIF 이미지를 PNG로 바꾸지 못했습니다.');
+  if (png.size > 2_000_000) throw Error('AVIF 이미지를 PNG로 바꾸니 2MB를 넘습니다. 크기를 줄여 올려 주세요.');
+  return new File([png], `${file.name.replace(/\.[^.]*$/, '') || 'image'}.png`, { type:'image/png' });
 }
 
 export async function makeBackup(state, vault) {

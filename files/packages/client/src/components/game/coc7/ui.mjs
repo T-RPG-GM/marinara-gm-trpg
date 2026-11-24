@@ -7,7 +7,7 @@ import { createMemoryLink, currentMemoryLink, memoryModes, memoryPeople } from '
 import { portraitWeatherLayer } from './portrait-weather.mjs';
 import { costTotals, currencyLabel, fetchExchangeRate, fetchLocalRates, formatLocalAmount, formatMoney, fxSources, localCost, formatRate, formatTokens, formatUsd, modelPrices, priceSources, recordCost, shortTokens, usageLimit, usageParts, usageTasks, usageTotals, validUsageRecord } from './usage.mjs';
 
-const imageAccept = '.png,.jpg,.jpeg,.gif,.webp';
+const imageAccept = '.png,.jpg,.jpeg,.gif,.webp,.avif';
 const handoutAccept = `${imageAccept},.pdf,.txt`;
 const leftPortraitAction = '왼쪽 사진으로 사용';
 const defaultFrame = Object.freeze({ x:50, y:0 });
