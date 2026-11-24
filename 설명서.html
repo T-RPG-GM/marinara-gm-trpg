@@ -347,19 +347,19 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
 
     <section id="commands">
       <h2>입력 명령어</h2>
-      <p class="intro">입력창에 그냥 쓰면 키퍼의 말이 되고, 앞에 명령어를 붙이면 역할이 바뀌어요.</p>
+      <p class="intro">입력창에 그냥 쓰면 키퍼의 말이 되고, 앞에 명령어를 붙이면 역할이 바뀌어요. 명령어는 옆에 적힌 한 글자로 줄여 써도 돼요. <code>/c 관찰력</code>은 <code>/check 관찰력</code>과 같고, 한 글자 뒤에 띄어쓰기를 하면 입력창에서 바로 긴 이름으로 바뀌어요.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>명령어</th><th>하는 일</th><th>예시</th></tr></thead>
           <tbody>
-            <tr><td><code>/desc</code></td><td>장면 묘사. 채팅에 가운데 정렬로 보여요.</td><td><code>/desc 지하실 문이 삐걱 열린다.</code></td></tr>
-            <tr><td><code>/as</code></td><td>NPC로 말하기. 이름에 띄어쓰기가 있으면 따옴표로 감싸요.</td><td><code>/as "서점 주인" 그 책은 팔 수 없소.</code></td></tr>
-            <tr><td><code>/em</code></td><td>행동 묘사. 페르소나를 연결했으면 페르소나의 행동이 돼요.</td><td><code>/em 조심스럽게 손전등을 켠다.</code></td></tr>
+            <tr><td><code>/desc</code> <code>/d</code></td><td>장면 묘사. 채팅에 가운데 정렬로 보여요.</td><td><code>/desc 지하실 문이 삐걱 열린다.</code></td></tr>
+            <tr><td><code>/as</code> <code>/a</code></td><td>NPC로 말하기. 이름에 띄어쓰기가 있으면 따옴표로 감싸요.</td><td><code>/as "서점 주인" 그 책은 팔 수 없소.</code></td></tr>
+            <tr><td><code>/em</code> <code>/e</code></td><td>행동 묘사. 페르소나를 연결했으면 페르소나의 행동이 돼요.</td><td><code>/em 조심스럽게 손전등을 켠다.</code></td></tr>
             <tr><td><code>*행동* "대사"</code></td><td>페르소나 대사에서 별표로 감싼 부분은 회색 행동 칸에, 나머지는 그 아래 대사로 나와요. 조사자 답변과 같은 모양이에요.</td><td><code>*고개를 든다.* "누구세요?"</code></td></tr>
-            <tr><td><code>/check</code></td><td>기능 판정. 아래 <a href="#checks">판정과 주사위</a>에서 자세히 설명해요.</td><td><code>/check 관찰력 | hard</code></td></tr>
+            <tr><td><code>/check</code> <code>/c</code></td><td>기능 판정. 아래 <a href="#checks">판정과 주사위</a>에서 자세히 설명해요.</td><td><code>/check 관찰력 | hard</code></td></tr>
             <tr><td><code>/roll</code></td><td>모두에게 보이는 주사위.</td><td><code>/roll 1d6+1</code></td></tr>
-            <tr><td><code>/gmroll</code></td><td>키퍼만 보는 비공개 주사위.</td><td><code>/gmroll 1d100</code></td></tr>
-            <tr><td><code>/toai</code></td><td>다음 AI 답변에만 전하는 지시. 채팅에는 안 보여요.</td><td><code>/toai 조사자는 아직 지하실을 무서워한다.</code></td></tr>
+            <tr><td><code>/gmroll</code> <code>/g</code></td><td>키퍼만 보는 비공개 주사위.</td><td><code>/gmroll 1d100</code></td></tr>
+            <tr><td><code>/toai</code> <code>/t</code></td><td>다음 AI 답변에만 전하는 지시. 채팅에는 안 보여요.</td><td><code>/toai 조사자는 아직 지하실을 무서워한다.</code></td></tr>
             <tr><td><code>/w</code></td><td>키퍼만 보는 메모. 키퍼 기록 탭에 남아요.</td><td><code>/w 3장에서 단서 공개 예정</code></td></tr>
             <tr><td><code>#이름</code></td><td>저장한 매크로 실행. <code>%{이름}</code>도 같아요.</td><td><code>#관찰</code></td></tr>
             <tr><td><code>@{…}</code></td><td>시트 값 불러오기.</td><td><code>@{관찰력}</code></td></tr>
@@ -728,7 +728,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
       </div>
     </section>
 
-    <footer>Marinara Engine 2.5.2 기준으로 만든 마리나라 GM 전용 TRPG 1.1.30 설명서예요. 비공식 팬 프로젝트이고, 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요.</footer>
+    <footer>Marinara Engine 2.5.2 기준으로 만든 마리나라 GM 전용 TRPG 1.1.31 설명서예요. 비공식 팬 프로젝트이고, 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요.</footer>
   </main>
 </div>
 </body>

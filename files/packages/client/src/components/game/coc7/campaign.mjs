@@ -242,7 +242,8 @@ export function rollGeneric(state, expression, shown, random = die, personaId) {
 }
 
 // Short forms read wherever a command is: the chat box, macros and investigation spot results.
-export const commandAliases = { '/d':'/desc' };
+// One letter each; /r and /w are already commands of their own.
+export const commandAliases = { '/d':'/desc', '/a':'/as', '/e':'/em', '/c':'/check', '/g':'/gmroll', '/t':'/toai', '/k':'/keeper' };
 
 export function handleInput(state, input, random = die, persona = null) {
   const line = textValue(input, 20000);

@@ -1536,7 +1536,7 @@ export function createWorkspace(container, adapter, options = {}) {
     const suggestions = ['/desc','/as','/em','/check','/roll','/gmroll','/toai','/w', ...(persona ? ['/keeper'] : []), ...state.macros.map((macro) => `#${macro.name}`)];
     const helper = el('div', { class:'suggestions' });
     const composer = textarea('keeper',draft,{ id:'coc7-keeper-input',rows:3,enterkeyhint:'send',
-      title:'Enter로 보내기 · Shift+Enter로 줄바꿈',placeholder:persona ? `페르소나 대사, /em 행동, /d 장면, /as NPC · pc → ${state.sheet.name}, npc → ${persona.name}` : `장면이나 NPC 대사를 입력하세요. /d(/desc), /as, /check, /toai · pc → ${state.sheet.name}`,
+      title:'Enter로 보내기 · Shift+Enter로 줄바꿈',placeholder:persona ? `페르소나 대사, /e(/em) 행동, /d(/desc) 장면, /a(/as) NPC, /c(/check) 판정 · pc → ${state.sheet.name}, npc → ${persona.name}` : `장면이나 NPC 대사를 입력하세요. /d(/desc), /a(/as), /c(/check), /t(/toai) · pc → ${state.sheet.name}`,
       'aria-label':persona ? '플레이 메시지' : '키퍼 메시지' });
     const updateSuggestions = () => {
       const prefix = composer.value.trimStart();
@@ -2214,6 +2214,7 @@ export function createWorkspace(container, adapter, options = {}) {
       '/gmroll 1d6',
       '/toai 지시',
       '/w 키퍼 기록',
+      `짧게 쓰기: ${Object.entries(commandAliases).map(([short, full]) => `${short} = ${full}`).join(' · ')}`,
       '#이름 또는 %{이름}',
       '@{능력치/기능명}',
       '?{질문|선택지,값} · [[주사위 식]]',
