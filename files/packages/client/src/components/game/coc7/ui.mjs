@@ -2549,17 +2549,46 @@ export function createWorkspace(container, adapter, options = {}) {
     const { condition, sheet } = state;
     const lastSecretRoll = state.rollHistory.findLast((roll) => roll.kind === 'dice' && roll.public === false && roll.session === state.session);
     const resource = (name, value = 0, max = 999) => input(name,value,numeric(0,max));
+    // A combatant's own numbers. Health, fighting, dodge and damage are optional; the attack forms fill from them.
+    const optionalNumber = (values, name, label) => {
+      const text = String(values.get(name) ?? '').trim();
+      return text ? integer(text,1,999,label) : null;
+    };
+    const combatantStats = (values) => {
+      const stats = { fight:optionalNumber(values,'fight','근접전'), dodge:optionalNumber(values,'dodge','회피'),
+        damage:textValue(values.get('damage'),40) || null };
+      for (const key of Object.keys(stats)) if (stats[key] === null) delete stats[key];
+      return stats;
+    };
+    const statFields = (item = {}) => [field('근접전 기능치',input('fight',item.fight ?? '',{ ...numeric(1,999),placeholder:'예: 35' })),
+      field('회피',input('dodge',item.dodge ?? '',{ ...numeric(1,999),placeholder:'예: 30' })),
+      field('피해 식',input('damage',item.damage ?? '',{ maxlength:40,placeholder:'예: 1d3' }))];
     const addCombatant = form((values) => transact((next) => {
       // Health is optional: a combatant added without it is not counted down.
-      const hpText = String(values.get('hp') ?? '').trim();
-      const hp = hpText ? integer(hpText,1,999,'체력') : null;
+      const hp = optionalNumber(values,'hp','체력');
       next.combat.push({ id:uid(), name:textValue(values.get('name'),80), dex:integer(values.get('dex'),1,999,'DEX'),
         ready:values.has('ready'), armor:integer(values.get('armor'),0,999,'방어구'), ammo:integer(values.get('ammo'),0,999,'탄약'),
-        ...(hp ? { hp, maxHp:hp } : {}) });
+        ...(hp ? { hp, maxHp:hp } : {}), ...combatantStats(values) });
     }), [grid(field('참가자 이름',input('name','',required)),field('DEX',input('dex',50,numeric(1,999))),
       field('체력',input('hp','',{ ...numeric(1,999),placeholder:'비우면 안 셈' })),
-      field('방어구',resource('armor')),field('탄약',resource('ammo'))), toggle('사격 준비 +50 DEX',check('ready'))], '참가자 추가');
+      field('방어구',resource('armor')),field('탄약',resource('ammo')),...statFields()), toggle('사격 준비 +50 DEX',check('ready'))], '참가자 추가');
+    const editCombatant = (actor) => el('details',{ class:'record','data-disclosure-id':`combatant-${actor.id}` },el('summary',{},'능력치 수정'),
+      form((values) => transact((next) => {
+        const item = next.combat.find((other) => other.id === actor.id);
+        if (!item) throw Error('전투 참가자를 찾을 수 없습니다.');
+        const maxHp = optionalNumber(values,'maxHp','최대 체력');
+        Object.assign(item,{ dex:integer(values.get('dex'),1,999,'DEX'), armor:integer(values.get('armor'),0,999,'방어구') });
+        for (const key of ['fight','dodge','damage']) delete item[key];
+        Object.assign(item,combatantStats(values));
+        if (maxHp) {
+          item.hp = Number.isInteger(item.maxHp) ? Math.min(item.hp,maxHp) : maxHp;
+          item.maxHp = maxHp;
+        } else { delete item.hp; delete item.maxHp; }
+      }), [grid(field('DEX',input('dex',actor.dex,numeric(1,999))),field('최대 체력',input('maxHp',actor.maxHp ?? '',{ ...numeric(1,999),placeholder:'비우면 안 셈' })),
+        field('방어구',resource('armor',actor.armor)),...statFields(actor))],'능력치 저장'));
     const health = (actor) => Number.isInteger(actor.maxHp) ? ` · 체력 ${actor.hp}/${actor.maxHp}${actor.hp === 0 ? ' · 쓰러짐' : ''}` : '';
+    const stats = (actor) => [Number.isInteger(actor.fight) ? `근접전 ${actor.fight}` : '',Number.isInteger(actor.dodge) ? `회피 ${actor.dodge}` : '',
+      actor.damage ? `피해 ${actor.damage}` : ''].filter(Boolean).map((text) => ` · ${text}`).join('');
     const enemies = state.combat.map((item) => [item.id,item.name]);
     // The investigator's defence: dodging uses 회피, fighting back a fighting skill, so the skill name follows the choice.
     const defenseSkill = input('defenseSkill','회피',{ required:true });
@@ -2569,6 +2598,31 @@ export function createWorkspace(container, adapter, options = {}) {
       else if (defense.value === 'counter' && defenseSkill.value === '회피') defenseSkill.value = '근접전(격투)';
       defenseSkill.disabled = defense.value === 'none';
     });
+    // Picking a combatant fills the attack forms with its own numbers; the Keeper can still change them.
+    const combatant = (id) => state.combat.find((item) => item.id === id);
+    const attackKind = select('kind',[['dodge','근접 · 상대 회피'],['counter','근접 · 상대 반격'],['firearm','사격']]);
+    const attackTarget = select('target',[['','직접 정하기'],...enemies]);
+    const opponentValue = resource('opp',40);
+    const targetArmor = resource('armor');
+    const fillTarget = () => {
+      const target = combatant(attackTarget.value);
+      if (!target) return;
+      const value = attackKind.value === 'dodge' ? target.dodge : attackKind.value === 'counter' ? target.fight : null;
+      if (Number.isInteger(value)) opponentValue.value = value;
+      targetArmor.value = target.armor;
+    };
+    attackTarget.addEventListener('change',fillTarget);
+    attackKind.addEventListener('change',fillTarget);
+    const attacker = select('attacker',enemies);
+    const enemyValue = input('value',50,numeric(1,999));
+    const enemyDamage = input('damage','1d3',required);
+    const fillAttacker = () => {
+      const enemy = combatant(attacker.value);
+      if (Number.isInteger(enemy?.fight)) enemyValue.value = enemy.fight;
+      if (enemy?.damage) enemyDamage.value = enemy.damage;
+    };
+    attacker.addEventListener('change',fillAttacker);
+    fillAttacker();
     const order = [{ id:'pc',name:sheet.name,dex:sheet.attributes.DEX,ready:false }, ...state.combat]
       .sort((a,b) => actionDex(b) - actionDex(a));
     return [
@@ -2616,7 +2670,8 @@ export function createWorkspace(container, adapter, options = {}) {
         }), field('키퍼가 승인한 치료',select('heal',[['aid','응급처치'],['medicine','의학']])), '치료 적용','combat-inline-form')),
       section('교전과 행동 순서',
         el('ol',{ class:'combat-order' },order.map((actor) => el('li',{},
-          el('strong',{},actor.name),note(`DEX ${actionDex(actor)}${actor.id !== 'pc' ? ` · 방어구 ${actor.armor} · 탄약 ${actor.ammo}${health(actor)}` : ''}`),
+          el('strong',{},actor.name),note(`DEX ${actionDex(actor)}${actor.id !== 'pc' ? ` · 방어구 ${actor.armor} · 탄약 ${actor.ammo}${health(actor)}${stats(actor)}` : ''}`),
+          actor.id !== 'pc' ? editCombatant(actor) : null,
           actor.id !== 'pc' && Number.isInteger(actor.maxHp) ? form((values) => transact((next) => changeCombatantHealth(next,actor.id,integer(values.get('amount'),-999,999,'체력 변화'))),
             field('체력 깎기 · 회복은 -',input('amount',1,numeric(-999,999))),'적용','combat-inline-form') : null,
           actor.id !== 'pc' ? row(button('탄약 1 소모',action((next) => {
@@ -2632,10 +2687,10 @@ export function createWorkspace(container, adapter, options = {}) {
             opponent:integer(values.get('opp'),0,999,'방어 기능치'), damage:String(values.get('damage')),
             armor:integer(values.get('armor'),0,999,'방어구'), impaling:values.has('impale') });
           flashRoll = roll.id;
-        }), [grid(field('공격 기능 이름',input('skill','',required)),field('공격 방식',select('kind',[['dodge','근접 · 상대 회피'],['counter','근접 · 상대 반격'],['firearm','사격']])),
-          field('상대 기능치',resource('opp',40)),field('요구 난이도',select('difficulty',Object.entries(DIFFICULTY))),
+        }), [grid(field('공격 기능 이름',input('skill','',required)),field('공격 방식',attackKind),
+          field('상대 기능치',opponentValue),field('요구 난이도',select('difficulty',Object.entries(DIFFICULTY))),
           field('보너스 / 페널티',input('modifier',0,numeric(-2,2))),field('피해 식',input('damage','1d6+db',required)),
-          field('대상',select('target',[['','직접 정하기'],...enemies])),field('대상 방어구 · 대상을 고르면 그 방어구',resource('armor'))),
+          field('대상',attackTarget),field('대상 방어구 · 대상을 고르면 그 방어구',targetArmor)),
           toggle('관통 무기',check('impale'))], '조사자 공격 판정'),
         enemies.length ? form((values) => transact((next) => {
           const result = enemyAttack(next,{ attackerId:String(values.get('attacker')), value:integer(values.get('value'),1,999,'적 공격 기능치'),
@@ -2643,9 +2698,9 @@ export function createWorkspace(container, adapter, options = {}) {
             damage:String(values.get('damage')), counterDamage:String(values.get('counterDamage') || '1d3+db'),
             armor:integer(values.get('pcArmor'),0,999,'조사자 방어구') });
           if (result.roll) flashRoll = result.roll.id;
-        }), [grid(field('공격하는 참가자',select('attacker',enemies)),field('적 공격 기능치',input('value',50,numeric(1,999))),
+        }), [grid(field('공격하는 참가자',attacker),field('적 공격 기능치',enemyValue),
           field('조사자 대응',defense),field('대응 기능 이름',defenseSkill),
-          field('적 피해 식',input('damage','1d3',required)),field('반격 성공 시 피해 식',input('counterDamage','1d3+db')),
+          field('적 피해 식',enemyDamage),field('반격 성공 시 피해 식',input('counterDamage','1d3+db')),
           field('조사자 방어구',resource('pcArmor')))], '적 공격 판정') : note('적이 조사자를 공격하는 판정은 참가자를 추가하면 나와요.')),
       section('추격 기록',
         state.chase.length ? note(`최저 MOV ${Math.min(...state.chase.map((item) => item.mov))} 기준으로 행동 수 계산`) : null,
