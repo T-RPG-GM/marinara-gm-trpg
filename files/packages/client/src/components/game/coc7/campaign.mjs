@@ -384,7 +384,7 @@ export function validSpot(spot) {
   const text = (value, max) => typeof value === 'string' && value.length <= max;
   return !!spot && text(spot.id,64) && text(spot.name,100) && spot.name.trim().length > 0 && text(spot.place,100) &&
     text(spot.result,4000) && text(spot.skill,100) && Object.hasOwn(DIFFICULTY,spot.difficulty) && typeof spot.revealed === 'boolean' &&
-    (spot.revealedBy === undefined || text(spot.revealedBy,64));
+    (spot.revealedBy === undefined || text(spot.revealedBy,64)) && (spot.failResult === undefined || text(spot.failResult,4000));
 }
 
 const spotLabel = ({ place, name }) => (place ? `${place} · ${name}` : name);
@@ -396,28 +396,56 @@ export function spotBriefing(state) {
     spots:spots.map(spotLabel) };
 }
 
-// Posts a spot's result. A result written as command lines (/desc, /as …) is sent line by line, as the Keeper
-// wrote it; plain text goes out as one scene headed by the spot's name. Every message it adds carries `data`.
-export function revealSpot(state, spot, data = {}) {
-  const lines = spot.result.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) throw Error('조사하면 알게 되는 내용을 먼저 적어 주세요.');
-  const before = state.seq;
-  for (const line of lines.some((item) => item.startsWith('/')) ? lines : [`/desc ${spot.name} · ${spot.result}`]) handleInput(state,line);
+// Posts text written for a spot. Command lines (/d, /as …) are sent line by line, as the Keeper wrote them;
+// plain text goes out as one scene headed by the spot's name.
+function postSpotText(state, spot, text) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  for (const line of lines.some((item) => item.startsWith('/')) ? lines : [`/desc ${spot.name} · ${text.trim()}`]) handleInput(state,line);
+}
+
+// Every message added since `before` carries `data` (which answer it belongs to, so a reroll can find it).
+function tagSince(state, before, data) {
   for (const entry of state.timeline) if (entry.seq > before) Object.assign(entry,data);
+}
+
+export function revealSpot(state, spot, data = {}) {
+  if (!spot.result.trim()) throw Error('조사하면 알게 되는 내용을 먼저 적어 주세요.');
+  const before = state.seq;
+  postSpotText(state,spot,spot.result);
+  tagSince(state,before,data);
   spot.revealed = true;
   audit(state,`조사 지점 공개 · ${spot.name}`);
 }
 
+// Rolls the spot's check. A finished roll sends its outcome: success reveals the spot's result, failure sends
+// the failure text (if any) and leaves the spot hidden so it can be tried again. A roll the Keeper still has to
+// approve or make sends nothing yet.
+export function rollSpot(state, spot, data = {}) {
+  if (!spot.skill) throw Error('판정 기능을 적어 주세요. 예: 도서관 이용');
+  const before = state.seq;
+  const roll = handleInput(state,`/check ${spot.skill} | ${spot.difficulty}`);
+  if (typeof roll?.success === 'boolean') {
+    if (roll.success && spot.result.trim()) revealSpot(state,spot);
+    else if (!roll.success && spot.failResult?.trim()) postSpotText(state,spot,spot.failResult);
+  }
+  tagSince(state,before,data);
+  return roll;
+}
+
 // After an answer: the spot the investigator says it examined — only the first one named, so one answer opens
-// one spot. Without a check it is revealed at once, tied to the answer so a reroll can take it back;
-// with a check it waits for the Keeper's roll.
+// one spot. Without a check it is revealed at once; with a check it is rolled at once when rolls are automatic.
+// Everything this sends is tied to the answer, so a reroll takes it back.
 function revealInvestigatedSpots(state, names, entry) {
   for (const spot of state.spots ?? []) {
     if (spot.revealedBy !== entry.id) continue;
     spot.revealed = false;
     delete spot.revealedBy;
   }
+  const removed = state.timeline.filter((item) => item.spotFor === entry.id);
+  const rolls = new Set(removed.map(({ rollId }) => rollId).filter(Boolean));
   state.timeline = state.timeline.filter((item) => item.spotFor !== entry.id);
+  state.rollHistory = state.rollHistory.filter(({ id }) => !rolls.has(id));
+  if (rolls.has(state.keeperWait)) state.keeperWait = null;
   const open = (state.spots ?? []).filter((spot) => !spot.revealed);
   const first = (Array.isArray(names) ? names : []).filter((name) => typeof name === 'string').slice(0,20).map(normalized)
     .map((name) => open.find((spot) => name === normalized(spotLabel(spot)) || name === normalized(spot.name))).find(Boolean);
@@ -425,9 +453,11 @@ function revealInvestigatedSpots(state, names, entry) {
   entry.spots = found.map(({ id }) => id);
   if (!entry.spots.length) delete entry.spots;
   for (const spot of found) {
-    if (spot.skill || !spot.result.trim()) continue;
-    revealSpot(state,spot,{ spotFor:entry.id });
-    spot.revealedBy = entry.id;
+    if (spot.skill) {
+      // A skill missing from the sheet must not cost the answer: the roll is left to the Keeper instead.
+      if (state.settings.rollMode === 'auto' && stat(state,spot.skill)) rollSpot(state,spot,{ spotFor:entry.id });
+    } else if (spot.result.trim()) revealSpot(state,spot,{ spotFor:entry.id });
+    if (spot.revealed) spot.revealedBy = entry.id;
   }
 }
 
