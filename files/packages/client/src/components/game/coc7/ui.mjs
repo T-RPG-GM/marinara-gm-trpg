@@ -3017,8 +3017,8 @@ export function createWorkspace(container, adapter, options = {}) {
         next.spots = [...(next.spots ?? []),...names.map((name) => ({ id:uid(),place,name,result:'',skill:'',difficulty:'regular',revealed:false }))];
         audit(next,`조사 지점 추가 · ${names.join(', ')}`);
       }),[
-        field('장소 (선택)',input('place','',{ maxlength:100,placeholder:'예: 병실' })),
-        field('조사 지점 · 쉼표로 여러 개',textarea('names','',{ ...required,rows:2,placeholder:'예: 창문, 침대, 사물함, 붙박이 책상, 간병인석, 커튼' })),
+        field('장소 (선택)',input('place','',{ maxlength:100,placeholder:'예: 서재' })),
+        field('조사 지점 · 쉼표로 여러 개',textarea('names','',{ ...required,rows:2,placeholder:'예: 책장, 벽난로, 책상 서랍, 초상화, 카펫' })),
       ],'조사 지점 추가'),
       hidden.length ? note(`AI 조사자가 아는 곳 · ${hidden.map(({ place, name }) => (place ? `${place} ${name}` : name)).join(', ')}`) : null,
       spots.map(spotRecord));
@@ -3069,7 +3069,7 @@ export function createWorkspace(container, adapter, options = {}) {
       action((next) => step(next,Object.assign(target(next),readSpot(values))))();
     };
     const roll = button('판정 굴리기',withSaved((next,item) => {
-      if (!item.skill) throw Error('판정 기능을 적어 주세요. 예: 관찰력');
+      if (!item.skill) throw Error('판정 기능을 적어 주세요. 예: 도서관 이용');
       const result = handleInput(next,`/check ${item.skill} | ${item.difficulty}`);
       if (result?.kind && Object.hasOwn(result,'public')) flashRoll = result.id;
     }),{ title:`${state.sheet.name} 시트로 판정을 굴려요` });
@@ -3096,8 +3096,8 @@ export function createWorkspace(container, adapter, options = {}) {
       form((values) => transact((next) => { Object.assign(target(next),readSpot(values)); }),[
         el('div',{ class:'spot-fields' },
           grid(field('장소',input('place',spot.place,{ maxlength:100 })),field('조사 지점',input('name',spot.name,{ ...required,maxlength:100,pattern:'.*\\S.*' }))),
-          field('조사하면 알게 되는 내용',textarea('result',spot.result,{ rows:4,maxlength:4000,placeholder:'예: 창틀에 긁힌 자국이 있다. 안쪽에서 잠겨 있다.' })),
-          grid(field('판정 기능 (선택)',input('skill',spot.skill,{ maxlength:100,placeholder:'예: 관찰력' })),
+          field('조사하면 알게 되는 내용',textarea('result',spot.result,{ rows:4,maxlength:4000,placeholder:'예: 서랍 바닥이 이중으로 되어 있고, 그 밑에 누렇게 바랜 편지가 숨겨져 있다.' })),
+          grid(field('판정 기능 (선택)',input('skill',spot.skill,{ maxlength:100,placeholder:'예: 도서관 이용' })),
             field('난이도',select('difficulty',Object.entries(DIFFICULTY),spot.difficulty)))),
         el('div',{ class:'row' },roll,reveal),
         el('div',{ class:'row' },el('button',{ class:'button',type:'submit' },'수정 저장'),remove),
