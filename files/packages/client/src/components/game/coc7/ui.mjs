@@ -272,7 +272,7 @@ export function createWorkspace(container, adapter, options = {}) {
       event.preventDefault();
       const values = new FormData(event.currentTarget);
       void run((signal) => submit(values,signal), '', false, true);
-    } }, children, el('button', { class:'button', type:'submit' }, label));
+    } }, children, label === null ? null : el('button', { class:'button', type:'submit' }, label));
   }
 
   async function run(task, label = '', cancellable = false, queue = false) {
@@ -2299,8 +2299,8 @@ export function createWorkspace(container, adapter, options = {}) {
         el('div',{ class:'handout-fields' },field('제목',input('title',item.title,required)),
           field('키퍼 승인 설명',textarea('description',item.description)),
           field('문서 텍스트 · TXT 자동 추출 / PDF 내용 붙여넣기',textarea('text',item.text))),
-        el('div',{ class:'row handout-edit-actions' },togglePublic,deleteHandout),
-      ],'수정 저장','handout-edit'),
+        el('div',{ class:'row handout-edit-actions' },togglePublic,el('button',{ class:'button',type:'submit' },'수정 저장'),deleteHandout),
+      ],null,'handout-edit'),
       analyzePending?.id === item.id ? form((values) => transact((next) => {
         const target = next.handouts.find((other) => other.id === item.id && other.public);
         if (!target) throw Error('이미지 설명을 사용하려면 핸드아웃을 먼저 공개하세요.');

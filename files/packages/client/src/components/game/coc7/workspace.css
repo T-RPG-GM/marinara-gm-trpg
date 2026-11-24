@@ -514,13 +514,9 @@
 .coc7-game-workspace .handout-description ol { list-style: decimal; }
 .coc7-game-workspace .handout-description a { text-decoration: underline; }
 .coc7-game-workspace .handout-description pre { overflow-x: auto; }
-.coc7-game-workspace .handout-record .handout-edit {
-  grid-template-columns: minmax(0,1fr) auto;
-  align-items: end;
-}
-.coc7-game-workspace .handout-fields { grid-column: 1 / -1; }
-.coc7-game-workspace :is(.handout-file-actions,.handout-edit-actions) { gap: .3rem; }
-.coc7-game-workspace .handout-edit > button[type="submit"] { white-space: nowrap; }
+/* One action line under the fields: [공개/공개 취소][수정 저장] ··· 삭제 (shared rule pushes 삭제 to the end);
+   in a narrow panel only the quiet 삭제 wraps. */
+.coc7-game-workspace :is(.handout-file-actions,.handout-edit-actions) { gap: .35rem; }
 .coc7-game-workspace .handout-upload { padding-bottom: .5rem; border-bottom: 1px solid var(--coc-stroke); }
 .coc7-game-workspace .session-add {
   grid-template-columns: minmax(0,1fr) auto;
