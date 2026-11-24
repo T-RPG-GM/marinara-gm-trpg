@@ -392,7 +392,7 @@ const spotLabel = ({ place, name }) => (place ? `${place} · ${name}` : name);
 export function spotBriefing(state) {
   const spots = (state.spots ?? []).filter((spot) => !spot.revealed);
   if (!spots.length) return null;
-  return { guidance:'키퍼가 준비한 조사할 수 있는 곳이다. 조사자가 지금 있는 장소의 지점 가운데 원하는 곳을 골라 살펴보고, 한 턴에 여러 곳을 조사해도 된다. 이번 턴에 실제로 조사하는 지점은 응답의 spots에 아래 이름 그대로 적는다. 무엇을 발견하는지는 키퍼가 알려 주므로 결과를 지어내거나 확정하지 않는다.',
+  return { guidance:'키퍼가 준비한 조사할 수 있는 곳이다. 조사자가 지금 있는 장소의 지점 가운데 원하는 곳을 골라 살펴본다. 한 턴에는 한 곳만 조사하고, 그 지점 이름 하나만 응답의 spots에 아래 이름 그대로 적는다. 판정 요청에 여러 곳을 묶지 않는다. 무엇을 발견하는지는 키퍼가 알려 주므로 결과를 지어내거나 확정하지 않는다.',
     spots:spots.map(spotLabel) };
 }
 
@@ -408,8 +408,9 @@ export function revealSpot(state, spot, data = {}) {
   audit(state,`조사 지점 공개 · ${spot.name}`);
 }
 
-// After an answer: the spots the investigator says it examined. Those without a check are revealed at once,
-// tied to the answer so a reroll can take them back; those with a check wait for the Keeper's roll.
+// After an answer: the spot the investigator says it examined — only the first one named, so one answer opens
+// one spot. Without a check it is revealed at once, tied to the answer so a reroll can take it back;
+// with a check it waits for the Keeper's roll.
 function revealInvestigatedSpots(state, names, entry) {
   for (const spot of state.spots ?? []) {
     if (spot.revealedBy !== entry.id) continue;
@@ -417,8 +418,10 @@ function revealInvestigatedSpots(state, names, entry) {
     delete spot.revealedBy;
   }
   state.timeline = state.timeline.filter((item) => item.spotFor !== entry.id);
-  const wanted = new Set((Array.isArray(names) ? names : []).filter((name) => typeof name === 'string').slice(0,20).map(normalized));
-  const found = (state.spots ?? []).filter((spot) => !spot.revealed && (wanted.has(normalized(spotLabel(spot))) || wanted.has(normalized(spot.name))));
+  const open = (state.spots ?? []).filter((spot) => !spot.revealed);
+  const first = (Array.isArray(names) ? names : []).filter((name) => typeof name === 'string').slice(0,20).map(normalized)
+    .map((name) => open.find((spot) => name === normalized(spotLabel(spot)) || name === normalized(spot.name))).find(Boolean);
+  const found = first ? [first] : [];
   entry.spots = found.map(({ id }) => id);
   if (!entry.spots.length) delete entry.spots;
   for (const spot of found) {
