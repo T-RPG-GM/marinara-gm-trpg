@@ -1441,3 +1441,17 @@
   .coc7-game-workspace .tabs::-webkit-scrollbar { display: none; }
   .coc7-game-workspace .tabs button { flex: none; padding: .15rem .75rem; border-radius: 999px; white-space: nowrap; }
 }
+
+/* Where a later session begins in the chat: a chapter title — "제 2 장", the name between two lines, a ◆. */
+.coc7-game-workspace .session-divider {
+  display: grid; justify-items: center; gap: .2rem; align-self: stretch; margin: 1rem 0 .6rem; text-align: center;
+}
+.coc7-game-workspace .session-divider-no { font-size: .72rem; letter-spacing: .3em; color: var(--coc-quiet); }
+.coc7-game-workspace .session-divider-title {
+  display: flex; align-items: center; gap: .85rem; width: 100%;
+  font-family: "Noto Serif KR","Nanum Myeongjo","Batang",Georgia,serif; font-size: 1.3rem; font-weight: 700; line-height: 1.35;
+  color: var(--coc-text); overflow-wrap: anywhere;
+}
+.coc7-game-workspace .session-divider-title::before,
+.coc7-game-workspace .session-divider-title::after { content: ""; flex: 1; min-width: 1.5rem; border-top: 1px solid var(--coc-stroke); }
+.coc7-game-workspace .session-divider-mark { font-size: .7rem; line-height: 1; color: var(--coc-dialogue); }

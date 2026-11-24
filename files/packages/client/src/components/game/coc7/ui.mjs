@@ -1081,6 +1081,29 @@ export function createWorkspace(container, adapter, options = {}) {
     });
   }
 
+  // A chapter title in the chat where a later session begins: "제 2 장", the session's name between two lines, a ◆. It is only shown;
+  // the AI never reads it. A session just added with no messages yet gets its line at the end of the chat.
+  function sessionDivider(number) {
+    const session = state.sessions.find((item) => item.number === number) ?? { number };
+    return el('div',{ class:'session-divider',role:'separator','aria-label':`제 ${number} 장 · ${sessionHeading(session)}` },
+      el('span',{ class:'session-divider-no' },`제 ${number} 장`),
+      el('span',{ class:'session-divider-title' },sessionHeading(session)),
+      el('span',{ class:'session-divider-mark','aria-hidden':true },'◆'));
+  }
+
+  function withSessionDividers(entries, view) {
+    const nodes = [];
+    let previous = null;
+    for (const entry of entries) {
+      const session = entry.session ?? 1;
+      if (previous !== null && session !== previous) nodes.push(sessionDivider(session));
+      nodes.push(view(entry));
+      previous = session;
+    }
+    if (previous !== null && state.session > previous) nodes.push(sessionDivider(state.session));
+    return nodes;
+  }
+
   // On phones a message's buttons stay folded behind one ⋯ button so they do not cover the text.
   function toolGroup(label, ...controls) {
     const group = el('div',{ class:'message-tools',role:'group','aria-label':label });
@@ -2975,8 +2998,8 @@ export function createWorkspace(container, adapter, options = {}) {
           toggle('조사자에게',el('input',{ type:'checkbox',name:'sanFor',value:'investigator',checked:true })),
           personaSheetNow ? toggle('페르소나에게',el('input',{ type:'checkbox',name:'sanFor',value:'persona',checked:true })) : null),
         toggle('AI가 이번 세션을 요약해 조사 노트에 기록',check('summary',true)),
-        toggle('마무리 후 다음 세션 시작',check('next',false)),
-        field('다음 세션 이름',input('nextName','',{ maxlength:150,placeholder:`세션 ${state.session + 1}` })),
+        toggle('마무리 후 후속 세션 시작',check('next',false)),
+        field('후속 세션 이름',input('nextName','',{ maxlength:150,placeholder:`세션 ${state.session + 1}` })),
       ],wrappingUp ? '마무리하는 중…' : '세션 마무리','wrap-up-form'));
   }
 
@@ -3183,7 +3206,7 @@ export function createWorkspace(container, adapter, options = {}) {
     else {
       timeline = el('div',{ class:'timeline', role:'log', 'aria-label':'공개 채팅' },
         layout.messages.length > older ? button('이전 메시지 더 보기',() => { older += 120; render(); }) : null,
-        messages.length ? messages.map((entry) => entryView(entry,attachments.get(entry.id),featured,descriptionSlots)) : el('div',{ class:'empty' },headline('첫 장면을 열어 보세요'),
+        messages.length ? withSessionDividers(messages,(entry) => entryView(entry,attachments.get(entry.id),featured,descriptionSlots)) : el('div',{ class:'empty' },headline('첫 장면을 열어 보세요'),
           note('장면을 적고 AI 답변을 누르면 조사자가 행동합니다.'),
           el('div',{ class:'start-actions' },
             !state.settings.cardId ? button('AI 조사자 설정',() => { active = 'sessions'; smallPane = true; render(); },{ class:'primary' }) : null,
