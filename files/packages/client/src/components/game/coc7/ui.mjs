@@ -1,6 +1,6 @@
 /* global document, fetch, navigator, createImageBitmap, Node, DOMParser, clearTimeout, setTimeout, FormData, AbortController, structuredClone, URL, window */
 import { ATTR, DIFFICULTY, LEVEL, SKILL_CATEGORIES, ageRules, referenceSkillList, skillReference, applyAge, creationIssues, creationPointUsage, derived, integer, normalized, rollDice, skillCategory, skillGrowthAmount, skillStartingValue } from './rules.mjs';
-import { defaultHistoryLimit, historyLimit, buildReplayHtml, rollText, currentInvestigatorSecret, scenarioFields, wrapUpSession, acceptTurn, addSkill, advanceSkill, append, applyCardProfile, applyCardSheetValues, applyProposal, audit, syncSheetProfile, buildPublicContext, capResources, cardAutoTargets, cardProfileFields, createCampaign, createSheet, evaluateProposal, expandMacro, handleInput, illustrationPrompt, imageTypes, injury, investigatorNotes, isIllustrationScene, latestRerollableTurn, pendingCount, personaSheet, pinnedMessageLimit, rerollTurnState, resolveIdea, revealSpot, rollCheck, rollGeneric, sanity, setSkillCategory, sheetFor, stat, textValue, uid } from './campaign.mjs';
+import { defaultHistoryLimit, historyLimit, buildReplayHtml, commandAliases, rollText, currentInvestigatorSecret, scenarioFields, wrapUpSession, acceptTurn, addSkill, advanceSkill, append, applyCardProfile, applyCardSheetValues, applyProposal, audit, syncSheetProfile, buildPublicContext, capResources, cardAutoTargets, cardProfileFields, createCampaign, createSheet, evaluateProposal, expandMacro, handleInput, illustrationPrompt, imageTypes, injury, investigatorNotes, isIllustrationScene, latestRerollableTurn, pendingCount, personaSheet, pinnedMessageLimit, rerollTurnState, resolveIdea, revealSpot, rollCheck, rollGeneric, sanity, setSkillCategory, sheetFor, stat, textValue, uid } from './campaign.mjs';
 import { assetFromFile, dataUrl, downloadFile, importBackup, makeBackup, parseModelJson, sendTurn, suggestionInput, summarizeSession } from './platform.mjs';
 import { actionDex, attack, changeCombatantHealth, chaseMoves, enemyAttack, heal, resolveDying, spendMagic } from './advanced.mjs';
 import { createMemoryLink, currentMemoryLink, memoryModes, memoryPeople } from './memory.mjs';
@@ -1586,7 +1586,6 @@ export function createWorkspace(container, adapter, options = {}) {
   // so the chat, the replay and the model all read the real names. Only whole Latin-letter words change
   // ("npc가", "pc한테" do; "kpc", "pcs" do not); "npc" is left alone while no persona is linked.
   // Short forms of commands, expanded at the start of any line: "/d" is "/desc".
-  const commandAliases = { '/d':'/desc' };
   function expandCommandAliases(text) {
     return String(text).replace(/^([ \t]*)(\/[a-z]+)(?=\s|$)/gim,(match, indent, command) => `${indent}${commandAliases[command.toLowerCase()] ?? command}`);
   }
@@ -3020,7 +3019,7 @@ export function createWorkspace(container, adapter, options = {}) {
     const spots = state.spots ?? [];
     const hidden = spots.filter((spot) => !spot.revealed);
     const spotsPanel = section('조사 지점',
-      note('장소마다 조사하면 알게 되는 내용을 미리 적어 두세요. AI 조사자에게는 아직 공개하지 않은 곳의 이름만 전해집니다. AI가 어느 곳을 조사하면 그 내용이 답변 바로 뒤에 자동으로 나가고, 판정 기능을 적은 곳은 판정을 굴린 뒤 결과 공개를 눌러 보냅니다. 내용을 /desc, /as 같은 명령어 줄로 적으면 한 줄씩 그대로 보냅니다.'),
+      note('장소마다 조사하면 알게 되는 내용을 미리 적어 두세요. AI 조사자에게는 아직 공개하지 않은 곳의 이름만 전해집니다. AI가 어느 곳을 조사하면 그 내용이 답변 바로 뒤에 자동으로 나가고, 판정 기능을 적은 곳은 판정을 굴린 뒤 결과 공개를 눌러 보냅니다. 내용을 /d(/desc), /as 같은 명령어 줄로 적으면 한 줄씩 그대로 보냅니다.'),
       form((values) => transact((next) => {
         const place = withShorthandNames(textValue(values.get('place'),100));
         const names = String(values.get('names') ?? '').split(/[,，\n]/).map((name) => withShorthandNames(textValue(name,100))).filter(Boolean);

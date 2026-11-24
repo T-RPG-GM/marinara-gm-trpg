@@ -241,10 +241,14 @@ export function rollGeneric(state, expression, shown, random = die, personaId) {
   return roll;
 }
 
+// Short forms read wherever a command is: the chat box, macros and investigation spot results.
+export const commandAliases = { '/d':'/desc' };
+
 export function handleInput(state, input, random = die, persona = null) {
   const line = textValue(input, 20000);
   if (!line) return;
-  const [, cmd, rest = ''] = /^(\/[^\s]+)(?:\s+([\s\S]*))?$/.exec(line) ?? [];
+  const [, typed, rest = ''] = /^(\/[^\s]+)(?:\s+([\s\S]*))?$/.exec(line) ?? [];
+  const cmd = typed && (commandAliases[typed.toLowerCase()] ?? typed);
   if (!cmd) {
     state.keeperWait = null;
     return persona ? append(state,'persona',line,persona) : append(state,'keeper',line);
