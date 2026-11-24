@@ -1,6 +1,6 @@
 /* global document, fetch, navigator, createImageBitmap, Node, DOMParser, clearTimeout, setTimeout, FormData, AbortController, structuredClone, URL, window */
 import { ATTR, DIFFICULTY, LEVEL, SKILL_CATEGORIES, ageRules, referenceSkillList, skillReference, applyAge, creationIssues, creationPointUsage, derived, integer, normalized, rollDice, skillCategory, skillGrowthAmount, skillStartingValue } from './rules.mjs';
-import { defaultHistoryLimit, historyLimit, buildReplayHtml, rollText, currentInvestigatorSecret, scenarioFields, wrapUpSession, acceptTurn, addSkill, advanceSkill, append, applyCardProfile, applyCardSheetValues, applyProposal, audit, syncSheetProfile, buildPublicContext, capResources, cardAutoTargets, cardProfileFields, createCampaign, createSheet, evaluateProposal, expandMacro, handleInput, illustrationPrompt, imageTypes, injury, investigatorNotes, isIllustrationScene, latestRerollableTurn, pendingCount, personaSheet, pinnedMessageLimit, rerollTurnState, resolveIdea, rollCheck, rollGeneric, sanity, setSkillCategory, sheetFor, stat, textValue, uid } from './campaign.mjs';
+import { defaultHistoryLimit, historyLimit, buildReplayHtml, rollText, currentInvestigatorSecret, scenarioFields, wrapUpSession, acceptTurn, addSkill, advanceSkill, append, applyCardProfile, applyCardSheetValues, applyProposal, audit, syncSheetProfile, buildPublicContext, capResources, cardAutoTargets, cardProfileFields, createCampaign, createSheet, evaluateProposal, expandMacro, handleInput, illustrationPrompt, imageTypes, injury, investigatorNotes, isIllustrationScene, latestRerollableTurn, pendingCount, personaSheet, pinnedMessageLimit, rerollTurnState, resolveIdea, revealSpot, rollCheck, rollGeneric, sanity, setSkillCategory, sheetFor, stat, textValue, uid } from './campaign.mjs';
 import { assetFromFile, dataUrl, downloadFile, importBackup, makeBackup, parseModelJson, sendTurn, suggestionInput, summarizeSession } from './platform.mjs';
 import { actionDex, attack, changeCombatantHealth, chaseMoves, enemyAttack, heal, resolveDying, spendMagic } from './advanced.mjs';
 import { createMemoryLink, currentMemoryLink, memoryModes, memoryPeople } from './memory.mjs';
@@ -1669,9 +1669,20 @@ export function createWorkspace(container, adapter, options = {}) {
       const { snapshot, response } = await sendTurn(state, vault, adapter, () => announce(`${state.sheet.name} 답변 생성 중…`), signal, { personaName:playerPersona()?.name ?? "" });
       if (closed || signal.aborted) return;
       await transact((next) => { acceptTurn(next, snapshot, response); linkTurnUsage(next); });
-      announce('응답 완료', 'ok');
+      announceSpots();
       continueMemory();
     }, 'AI 응답 준비 중…', true);
+  }
+
+  // After an answer: say which examined spots went out and which still wait for the Keeper's roll.
+  function announceSpots() {
+    const ids = latestRerollableTurn(state)?.spots ?? [];
+    const spots = (state.spots ?? []).filter(({ id }) => ids.includes(id));
+    const shown = spots.filter(({ revealed }) => revealed).map(({ name }) => name);
+    const waiting = spots.filter(({ revealed }) => !revealed).map(({ name }) => name);
+    if (!spots.length) return announce('응답 완료','ok');
+    announce([shown.length ? `${shown.join(', ')} 조사 결과를 공개했어요.` : '',
+      waiting.length ? `${waiting.join(', ')}은(는) 시나리오 탭에서 판정이나 내용을 확인해 공개해 주세요.` : ''].filter(Boolean).join(' '),waiting.length ? 'notice' : 'ok');
   }
 
   function rerollAnswer(id) {
@@ -1682,7 +1693,7 @@ export function createWorkspace(container, adapter, options = {}) {
       const { snapshot, response } = await sendTurn(replay,vault,adapter,() => announce(`${replay.sheet.name} 답변 다시 생성 중…`),signal,{ personaName:playerPersona()?.name ?? "" });
       if (closed || signal.aborted) return;
       await transact((next) => { acceptTurn(next,snapshot,response,id); linkTurnUsage(next,id); });
-      announce('응답 완료','ok');
+      announceSpots();
       continueMemory();
     },'AI 답변 리롤 준비 중…',true);
   }
@@ -3009,7 +3020,7 @@ export function createWorkspace(container, adapter, options = {}) {
     const spots = state.spots ?? [];
     const hidden = spots.filter((spot) => !spot.revealed);
     const spotsPanel = section('조사 지점',
-      note('장소마다 조사하면 알게 되는 내용을 미리 적어 두세요. AI 조사자에게는 아직 공개하지 않은 곳의 이름만 전해지고, 내용은 결과 공개를 눌러야 채팅에 나옵니다.'),
+      note('장소마다 조사하면 알게 되는 내용을 미리 적어 두세요. AI 조사자에게는 아직 공개하지 않은 곳의 이름만 전해집니다. AI가 어느 곳을 조사하면 그 내용이 답변 바로 뒤에 자동으로 나가고, 판정 기능을 적은 곳은 판정을 굴린 뒤 결과 공개를 눌러 보냅니다. 내용을 /desc, /as 같은 명령어 줄로 적으면 한 줄씩 그대로 보냅니다.'),
       form((values) => transact((next) => {
         const place = withShorthandNames(textValue(values.get('place'),100));
         const names = String(values.get('names') ?? '').split(/[,，\n]/).map((name) => withShorthandNames(textValue(name,100))).filter(Boolean);
@@ -3076,14 +3087,10 @@ export function createWorkspace(container, adapter, options = {}) {
     const reveal = spot.revealed
       ? button('숨김으로 되돌리기',withSaved((next,item) => {
         item.revealed = false;
+        delete item.revealedBy;
         audit(next,`조사 지점 숨김 · ${item.name}`);
       }),{ title:'AI 조사자에게 이 장소 이름을 다시 알려요. 채팅에 나간 결과는 그대로예요.' })
-      : button('결과 공개',withSaved((next,item) => {
-        if (!item.result) throw Error('조사하면 알게 되는 내용을 먼저 적어 주세요.');
-        handleInput(next,`/desc ${item.name} · ${item.result}`);
-        item.revealed = true;
-        audit(next,`조사 지점 공개 · ${item.name}`);
-      }),{ title:'결과를 채팅에 장면으로 공개해요' });
+      : button('결과 공개',withSaved((next,item) => revealSpot(next,item)),{ title:'결과를 채팅에 공개해요' });
     const remove = button('삭제',() => {
       if (!window.confirm(`'${spot.name}' 조사 지점을 삭제할까요? 채팅에 나간 결과는 그대로예요.`)) return;
       action((next) => {

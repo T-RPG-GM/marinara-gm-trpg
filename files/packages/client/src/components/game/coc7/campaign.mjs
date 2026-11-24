@@ -379,14 +379,49 @@ export function scenarioBriefing(state) {
 export function validSpot(spot) {
   const text = (value, max) => typeof value === 'string' && value.length <= max;
   return !!spot && text(spot.id,64) && text(spot.name,100) && spot.name.trim().length > 0 && text(spot.place,100) &&
-    text(spot.result,4000) && text(spot.skill,100) && Object.hasOwn(DIFFICULTY,spot.difficulty) && typeof spot.revealed === 'boolean';
+    text(spot.result,4000) && text(spot.skill,100) && Object.hasOwn(DIFFICULTY,spot.difficulty) && typeof spot.revealed === 'boolean' &&
+    (spot.revealedBy === undefined || text(spot.revealedBy,64));
 }
+
+const spotLabel = ({ place, name }) => (place ? `${place} · ${name}` : name);
 
 export function spotBriefing(state) {
   const spots = (state.spots ?? []).filter((spot) => !spot.revealed);
   if (!spots.length) return null;
-  return { guidance:'키퍼가 준비한 조사할 수 있는 곳이다. 조사자가 지금 있는 장소의 지점 가운데 원하는 곳을 골라 살펴보고, 한 턴에 여러 곳을 조사해도 된다. 무엇을 발견하는지는 키퍼가 알려 주므로 결과를 지어내거나 확정하지 않는다.',
-    spots:spots.map(({ place, name }) => (place ? `${place} · ${name}` : name)) };
+  return { guidance:'키퍼가 준비한 조사할 수 있는 곳이다. 조사자가 지금 있는 장소의 지점 가운데 원하는 곳을 골라 살펴보고, 한 턴에 여러 곳을 조사해도 된다. 이번 턴에 실제로 조사하는 지점은 응답의 spots에 아래 이름 그대로 적는다. 무엇을 발견하는지는 키퍼가 알려 주므로 결과를 지어내거나 확정하지 않는다.',
+    spots:spots.map(spotLabel) };
+}
+
+// Posts a spot's result. A result written as command lines (/desc, /as …) is sent line by line, as the Keeper
+// wrote it; plain text goes out as one scene headed by the spot's name. Every message it adds carries `data`.
+export function revealSpot(state, spot, data = {}) {
+  const lines = spot.result.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) throw Error('조사하면 알게 되는 내용을 먼저 적어 주세요.');
+  const before = state.seq;
+  for (const line of lines.some((item) => item.startsWith('/')) ? lines : [`/desc ${spot.name} · ${spot.result}`]) handleInput(state,line);
+  for (const entry of state.timeline) if (entry.seq > before) Object.assign(entry,data);
+  spot.revealed = true;
+  audit(state,`조사 지점 공개 · ${spot.name}`);
+}
+
+// After an answer: the spots the investigator says it examined. Those without a check are revealed at once,
+// tied to the answer so a reroll can take them back; those with a check wait for the Keeper's roll.
+function revealInvestigatedSpots(state, names, entry) {
+  for (const spot of state.spots ?? []) {
+    if (spot.revealedBy !== entry.id) continue;
+    spot.revealed = false;
+    delete spot.revealedBy;
+  }
+  state.timeline = state.timeline.filter((item) => item.spotFor !== entry.id);
+  const wanted = new Set((Array.isArray(names) ? names : []).filter((name) => typeof name === 'string').slice(0,20).map(normalized));
+  const found = (state.spots ?? []).filter((spot) => !spot.revealed && (wanted.has(normalized(spotLabel(spot))) || wanted.has(normalized(spot.name))));
+  entry.spots = found.map(({ id }) => id);
+  if (!entry.spots.length) delete entry.spots;
+  for (const spot of found) {
+    if (spot.skill || !spot.result.trim()) continue;
+    revealSpot(state,spot,{ spotFor:entry.id });
+    spot.revealedBy = entry.id;
+  }
 }
 
 export function validInvestigatorSecret(secret) {
@@ -821,13 +856,15 @@ export function rerollTurnState(state, id) {
     notes:notesBeforeTurn(state,entry),
     privateLog:state.privateLog.filter((item) => instructionIds.has(item.id)).map((item) => ({ ...item,used:false })),
     handouts:state.handouts.filter((item) => handoutDeliveryIndex(item,entry) >= 0),
+    // Spots this answer revealed are open again, so the new answer may choose them.
+    ...(state.spots ? { spots:state.spots.map((spot) => (spot.revealedBy === entry.id ? { ...spot,revealed:false } : spot)) } : {}),
   };
 }
 
 export function acceptTurn(state, snapshot, response, replaceId) {
   const existing = replaceId ? requireRerollableTurn(state,replaceId) : null;
   const allowedFields = ['action','dialogue','request','hypothesis'];
-  if (!response || Object.keys(response).some((key) => key !== 'notes' && !allowedFields.includes(key)) || allowedFields.some((key) => response[key] != null && typeof response[key] !== 'string')) throw Error('조사자 응답 형식을 확인할 수 없습니다. 다시 시도하세요.');
+  if (!response || Object.keys(response).some((key) => key !== 'notes' && key !== 'spots' && !allowedFields.includes(key)) || allowedFields.some((key) => response[key] != null && typeof response[key] !== 'string')) throw Error('조사자 응답 형식을 확인할 수 없습니다. 다시 시도하세요.');
   const action = textValue(response.action, 200000);
   const dialogue = textValue(response.dialogue, 200000);
   const combined = [action, dialogue].filter(Boolean).join('\n\n');
@@ -861,6 +898,7 @@ export function acceptTurn(state, snapshot, response, replaceId) {
     else (handout.deliveries ??= []).push(delivery);
   }
   if (existing) audit(state,'마지막 조사자 답변 리롤');
+  revealInvestigatedSpots(state,response.spots,entry);
   return entry;
 }
 
