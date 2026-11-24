@@ -180,6 +180,8 @@ export function createWorkspace(container, adapter, options = {}) {
   };
   let timelineCache = null;
   let revealHandout = '';
+  // The newest-notes count the Keeper typed, kept across re-renders until it is applied.
+  let keepNewestCount = null;
   let skillAnalysisFor = null;
   let statusTimer;
   let smallPane = false;
@@ -2532,9 +2534,11 @@ export function createWorkspace(container, adapter, options = {}) {
         el('span',{ class:'preset-section-name' },item.text.slice(0,90),el('small',{},noteLabels[item.kind].split(' · ')[0])));
     });
     // Quick picks so a long notebook is not unticked one by one: keep only the newest N, or clear every box.
-    const newest = input('keepNewest',Math.min(20,shown.length),{ ...numeric(1,shown.length),'aria-label':'기억할 최신 노트 수',class:'keep-newest' });
+    const newest = input('keepNewest',keepNewestCount ?? (kept < shown.length ? kept : Math.min(20,shown.length)),{ ...numeric(1,shown.length),'aria-label':'기억할 최신 노트 수',class:'keep-newest',
+      oninput:(event) => { keepNewestCount = event.target.value; } });
     const keepNewest = () => {
       const count = Math.max(1,Math.min(shown.length,Math.trunc(Number(newest.value)) || 1));
+      keepNewestCount = null;
       action(apply(new Set(shown.slice(0,count).map((item) => item.id))),`최신 노트 ${count}개만 AI가 기억해요.`)();
     };
     return el('details',{ class:'record','data-disclosure-id':'ai-note-picker' },
