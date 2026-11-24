@@ -2361,7 +2361,34 @@ export function createWorkspace(container, adapter, options = {}) {
         revealHandout = item.id;
         smallPane = false;
       },[field('제목',title),field('공개할 설명',textarea('description')),field('파일',file)],'핸드아웃 등록','handout-upload'),
+      handoutUnpublishPicker(),
       state.handouts.map(handoutRecord));
+  }
+
+  /* Takes several public handouts back at once, the same as pressing 공개 취소 on each. */
+  function handoutUnpublishPicker() {
+    const shown = state.handouts.filter((item) => item.public);
+    if (!shown.length) return null;
+    const boxes = shown.map((item) => {
+      const box = check('handoutId',false);
+      box.value = item.id;
+      return el('label',{ class:'preset-section' },box,el('span',{ class:'preset-section-name' },item.title));
+    });
+    return el('details',{ class:'record','data-disclosure-id':'handout-unpublish' },
+      el('summary',{},`공개 중인 핸드아웃 한 번에 공개 취소 · ${shown.length}개`),
+      pickerForm(async (values) => {
+        const ids = new Set(values.getAll('handoutId').map(String));
+        if (!ids.size) throw Error('공개 취소할 핸드아웃을 체크하세요.');
+        await transact((next) => {
+          for (const target of next.handouts) if (ids.has(target.id) && target.public) {
+            target.public = false;
+            audit(next,`공개 회수 · ${target.title}`);
+          }
+        });
+        announce(`핸드아웃 ${ids.size}개를 공개 취소했어요.`,'ok');
+      },boxes,'고른 핸드아웃 공개 취소',
+        button('모두 체크',() => { for (const box of boxes) box.querySelector('input').checked = true; }),
+        button('모두 해제',() => { for (const box of boxes) box.querySelector('input').checked = false; })));
   }
 
   function handleHandoutDisclosure(next,target) {
