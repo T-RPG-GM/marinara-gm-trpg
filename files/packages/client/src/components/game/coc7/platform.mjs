@@ -1,5 +1,5 @@
 /* global FileReader, createImageBitmap, TextDecoder, atob, File, URL, Blob, document, setTimeout */
-import { SCHEMA, cardFields, imageTypes, scenarioBriefing, secretBriefing, sessionLog, sessionSummaries, sheetFor, textValue, turnPayload, uid, validateCampaign } from './campaign.mjs';
+import { SCHEMA, cardFields, imageTypes, scenarioBriefing, secretBriefing, spotBriefing, sessionLog, sessionSummaries, sheetFor, textValue, turnPayload, uid, validateCampaign } from './campaign.mjs';
 import { currentMemoryLink, isMemoryRoomId, memoryBriefing, pickMemories, readMemoryRooms } from './memory.mjs';
 import { ATTR, normalized } from './rules.mjs';
 
@@ -154,6 +154,7 @@ export async function sendTurn(state, vault, adapter, progress, signal, { person
     task:'turn', history, images, keeperInstructions:snapshot.instructions.map((item) => item.text), lorebookScan:context,
     prompt:JSON.stringify({ investigator:snapshot.investigator, card:snapshot.card,
       ...(scenarioBriefing(state) ? { scenarioSetting:scenarioBriefing(state) } : {}),
+      ...(spotBriefing(state) ? { investigationSpots:spotBriefing(state) } : {}),
       ...(secretBriefing(state) ? { investigatorSecret:secretBriefing(state) } : {}),
       ...(sessionSummaries(state).length ? { previousSessionSummaries:sessionSummaries(state) } : {}),
       knownFactsAndHypotheses:snapshot.facts,

@@ -1236,7 +1236,7 @@ export function createWorkspace(container, adapter, options = {}) {
   /* Prompt breakdown, like Marinara's prompt inspector: the exact request an answer was generated from,
      split into its sections with a token estimate each, searchable, with the model's reported counts. */
   const promptRequestNames = {
-    investigator:'조사자 시트', card:'봇카드', scenarioSetting:'시나리오', investigatorSecret:'비밀 HO',
+    investigator:'조사자 시트', card:'봇카드', scenarioSetting:'시나리오', investigationSpots:'조사 지점', investigatorSecret:'비밀 HO',
     previousSessionSummaries:'지난 세션 요약', knownFactsAndHypotheses:'조사 노트', pinnedChatContext:'고정한 대화',
     referenceMemories:'기억 서재', pendingKeeperEvents:'이번 턴 장면', handouts:'핸드아웃', images:'첨부 이미지',
     instructions:'키퍼 지시', session:'세션', log:'세션 기록',
@@ -3006,6 +3006,23 @@ export function createWorkspace(container, adapter, options = {}) {
         ? el('p',{ class:'scenario-status open' },`마지막 저장 · ${new Date(scenario.savedAt).toLocaleString('ko-KR',{ month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit' })} · 다음 AI 답변부터 반영돼요`)
         : note('아직 저장하지 않아 AI에 시대 배경이 전달되지 않습니다. 저장하면 다음 AI 답변부터 바로 반영돼요.'));
 
+    const spots = state.spots ?? [];
+    const hidden = spots.filter((spot) => !spot.revealed);
+    const spotsPanel = section('조사 지점',
+      note('장소마다 조사하면 알게 되는 내용을 미리 적어 두세요. AI 조사자에게는 아직 공개하지 않은 곳의 이름만 전해지고, 내용은 결과 공개를 눌러야 채팅에 나옵니다.'),
+      form((values) => transact((next) => {
+        const place = withShorthandNames(textValue(values.get('place'),100));
+        const names = String(values.get('names') ?? '').split(/[,，\n]/).map((name) => withShorthandNames(textValue(name,100))).filter(Boolean);
+        if (!names.length) throw Error('조사 지점 이름을 적어 주세요.');
+        next.spots = [...(next.spots ?? []),...names.map((name) => ({ id:uid(),place,name,result:'',skill:'',difficulty:'regular',revealed:false }))];
+        audit(next,`조사 지점 추가 · ${names.join(', ')}`);
+      }),[
+        field('장소 (선택)',input('place','',{ maxlength:100,placeholder:'예: 병실' })),
+        field('조사 지점 · 쉼표로 여러 개',textarea('names','',{ ...required,rows:2,placeholder:'예: 창문, 침대, 사물함, 붙박이 책상, 간병인석, 커튼' })),
+      ],'조사 지점 추가'),
+      hidden.length ? note(`AI 조사자가 아는 곳 · ${hidden.map(({ place, name }) => (place ? `${place} ${name}` : name)).join(', ')}`) : null,
+      spots.map(spotRecord));
+
     const saved = state.investigatorSecret;
     const live = currentInvestigatorSecret(state);
     const secretPanel = section('조사자 비밀 설정 (HO)',
@@ -3026,7 +3043,65 @@ export function createWorkspace(container, adapter, options = {}) {
         note('내용을 비우고 저장하면 비밀이 삭제됩니다.'),
       ],'비밀 저장'),
       live ? el('p',{ class:`scenario-status${live.revealed ? ' open' : ''}` },live.revealed ? '현재 상태 · 공개 허락됨' : '현재 상태 · 숨기는 중') : null);
-    return [notePanel,secretPanel];
+    return [notePanel,spotsPanel,secretPanel];
+  }
+
+  // One spot: its fields, then [판정][결과 공개] and [수정 저장] ··· 삭제. Rolling and revealing save the fields first,
+  // so text typed but not yet saved is what gets rolled for and shown.
+  function spotRecord(spot) {
+    const readSpot = (values) => ({
+      place:withShorthandNames(textValue(values.get('place'),100)),
+      name:withShorthandNames(textValue(values.get('name'),100)) || spot.name,
+      result:withShorthandNames(textValue(values.get('result'),4000)),
+      skill:textValue(values.get('skill'),100),
+      difficulty:Object.hasOwn(DIFFICULTY,values.get('difficulty')) ? values.get('difficulty') : 'regular',
+    });
+    const target = (next) => {
+      const found = next.spots?.find(({ id }) => id === spot.id);
+      if (!found) throw Error('조사 지점을 찾을 수 없습니다.');
+      return found;
+    };
+    // Saves what is typed, then does the button's own step on the saved spot.
+    const withSaved = (step) => (event) => {
+      const host = event.currentTarget.form;
+      if (!host.reportValidity()) return;
+      const values = new FormData(host);
+      action((next) => step(next,Object.assign(target(next),readSpot(values))))();
+    };
+    const roll = button('판정 굴리기',withSaved((next,item) => {
+      if (!item.skill) throw Error('판정 기능을 적어 주세요. 예: 관찰력');
+      const result = handleInput(next,`/check ${item.skill} | ${item.difficulty}`);
+      if (result?.kind && Object.hasOwn(result,'public')) flashRoll = result.id;
+    }),{ title:`${state.sheet.name} 시트로 판정을 굴려요` });
+    const reveal = spot.revealed
+      ? button('숨김으로 되돌리기',withSaved((next,item) => {
+        item.revealed = false;
+        audit(next,`조사 지점 숨김 · ${item.name}`);
+      }),{ title:'AI 조사자에게 이 장소 이름을 다시 알려요. 채팅에 나간 결과는 그대로예요.' })
+      : button('결과 공개',withSaved((next,item) => {
+        if (!item.result) throw Error('조사하면 알게 되는 내용을 먼저 적어 주세요.');
+        handleInput(next,`/desc ${item.name} · ${item.result}`);
+        item.revealed = true;
+        audit(next,`조사 지점 공개 · ${item.name}`);
+      }),{ title:'결과를 채팅에 장면으로 공개해요' });
+    const remove = button('삭제',() => {
+      if (!window.confirm(`'${spot.name}' 조사 지점을 삭제할까요? 채팅에 나간 결과는 그대로예요.`)) return;
+      action((next) => {
+        next.spots = next.spots.filter(({ id }) => id !== spot.id);
+        audit(next,`조사 지점 삭제 · ${spot.name}`);
+      })();
+    },{ 'aria-label':`${spot.name} 조사 지점 삭제` });
+    return el('details',{ class:'record spot-record' },
+      el('summary',{},`${spot.revealed ? '공개' : '숨김'} · ${spot.place ? `${spot.place} · ` : ''}${spot.name}${spot.skill ? ` · ${spot.skill}` : ''}${spot.result ? '' : ' · 내용 없음'}`),
+      form((values) => transact((next) => { Object.assign(target(next),readSpot(values)); }),[
+        el('div',{ class:'spot-fields' },
+          grid(field('장소',input('place',spot.place,{ maxlength:100 })),field('조사 지점',input('name',spot.name,{ ...required,maxlength:100,pattern:'.*\\S.*' }))),
+          field('조사하면 알게 되는 내용',textarea('result',spot.result,{ rows:4,maxlength:4000,placeholder:'예: 창틀에 긁힌 자국이 있다. 안쪽에서 잠겨 있다.' })),
+          grid(field('판정 기능 (선택)',input('skill',spot.skill,{ maxlength:100,placeholder:'예: 관찰력' })),
+            field('난이도',select('difficulty',Object.entries(DIFFICULTY),spot.difficulty)))),
+        el('div',{ class:'row' },roll,reveal),
+        el('div',{ class:'row' },el('button',{ class:'button',type:'submit' },'수정 저장'),remove),
+      ],null,'spot-edit'));
   }
 
   /* Session wrap-up: growth rolls, SAN reward and an AI summary in one step. */
