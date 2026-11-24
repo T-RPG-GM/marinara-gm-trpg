@@ -865,10 +865,31 @@ export function rerollTurnState(state, id) {
   };
 }
 
-export function acceptTurn(state, snapshot, response, replaceId) {
+// Models drift from the asked shape in small ways: an extra field, paragraphs sent as a list, the answer
+// wrapped in one more object, spots under the name they were given. Those are read as meant; only an
+// answer whose text fields are something else entirely is refused, naming the field.
+export function normalizeTurnResponse(raw) {
+  const isObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
+  if (!isObject(raw)) throw Error('조사자 응답 형식을 확인할 수 없습니다 (JSON 객체가 아님). 다시 시도하세요.');
+  const textFields = ['action','dialogue','request','hypothesis'];
+  const wrapped = !textFields.some((key) => key in raw) && Object.values(raw).find((value) => isObject(value) && ('action' in value || 'dialogue' in value));
+  const response = wrapped || raw;
+  const result = { notes:response.notes };
+  for (const key of textFields) {
+    const value = response[key];
+    if (value == null) continue;
+    if (typeof value === 'string') result[key] = value;
+    else if (Array.isArray(value) && value.every((item) => typeof item === 'string')) result[key] = value.join(key === 'request' ? ' ' : '\n\n');
+    else throw Error(`조사자 응답 형식을 확인할 수 없습니다 (${key} 칸이 글이 아님). 다시 시도하세요.`);
+  }
+  const spots = response.spots ?? response.investigatedSpots ?? response.investigationSpots;
+  result.spots = typeof spots === 'string' ? [spots] : spots;
+  return result;
+}
+
+export function acceptTurn(state, snapshot, raw, replaceId) {
   const existing = replaceId ? requireRerollableTurn(state,replaceId) : null;
-  const allowedFields = ['action','dialogue','request','hypothesis'];
-  if (!response || Object.keys(response).some((key) => key !== 'notes' && key !== 'spots' && !allowedFields.includes(key)) || allowedFields.some((key) => response[key] != null && typeof response[key] !== 'string')) throw Error('조사자 응답 형식을 확인할 수 없습니다. 다시 시도하세요.');
+  const response = normalizeTurnResponse(raw);
   const action = textValue(response.action, 200000);
   const dialogue = textValue(response.dialogue, 200000);
   const combined = [action, dialogue].filter(Boolean).join('\n\n');

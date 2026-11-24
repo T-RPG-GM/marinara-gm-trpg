@@ -1667,10 +1667,15 @@ export function createWorkspace(container, adapter, options = {}) {
       render();
       const { snapshot, response } = await sendTurn(state, vault, adapter, () => announce(`${state.sheet.name} 답변 생성 중…`), signal, { personaName:playerPersona()?.name ?? "" });
       if (closed || signal.aborted) return;
-      await transact((next) => { acceptTurn(next, snapshot, response); linkTurnUsage(next); });
+      await transact((next) => { keepRejected(response,() => acceptTurn(next, snapshot, response)); linkTurnUsage(next); });
       announceSpots();
       continueMemory();
     }, 'AI 응답 준비 중…', true);
+  }
+
+  // A refused answer is left in the browser console, so the reason can be read later.
+  function keepRejected(response, accept) {
+    try { return accept(); } catch (error) { console.warn('거부된 조사자 응답', response); throw error; }
   }
 
   // After an answer: say which examined spots went out and which still wait for the Keeper's roll.
@@ -1691,7 +1696,7 @@ export function createWorkspace(container, adapter, options = {}) {
       render();
       const { snapshot, response } = await sendTurn(replay,vault,adapter,() => announce(`${replay.sheet.name} 답변 다시 생성 중…`),signal,{ personaName:playerPersona()?.name ?? "" });
       if (closed || signal.aborted) return;
-      await transact((next) => { acceptTurn(next,snapshot,response,id); linkTurnUsage(next,id); });
+      await transact((next) => { keepRejected(response,() => acceptTurn(next,snapshot,response,id)); linkTurnUsage(next,id); });
       announceSpots();
       continueMemory();
     },'AI 답변 리롤 준비 중…',true);
