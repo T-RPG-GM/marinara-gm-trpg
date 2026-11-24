@@ -15,18 +15,20 @@ export function dataUrl(blob) {
 const mimeByExtension = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', webp:'image/webp', pdf:'application/pdf', txt:'text/plain' };
 export async function assetFromFile(file, imagesOnly = false) {
   if (!file || file.size <= 0 || file.size > 2_000_000) throw Error('파일 하나에 최대 2MB까지 첨부할 수 있습니다.');
-  const type = mimeByExtension[file.name.split('.').pop().toLowerCase()] ?? file.type;
+  // The file's first bytes decide its type, so a WebP renamed to .png still uploads as WebP.
+  // Plain text has no signature, so only a .txt (or text/plain) file may fall back to it.
+  const claimed = mimeByExtension[file.name.split('.').pop().toLowerCase()] ?? file.type;
   const bytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   const latin = new TextDecoder('latin1').decode(bytes);
-  const valid = {
-    'image/png':bytes[0] === 137 && latin.slice(1,4) === 'PNG',
-    'image/jpeg':bytes[0] === 255 && bytes[1] === 216,
-    'image/webp':latin.startsWith('RIFF') && latin.slice(8,12) === 'WEBP',
-    'image/gif':latin.startsWith('GIF87a') || latin.startsWith('GIF89a'),
-    'application/pdf':latin.startsWith('%PDF-'),
-    'text/plain':!bytes.includes(0),
-  };
-  if (!Object.hasOwn(valid, type) || !valid[type] || (imagesOnly && !imageTypes.includes(type))) throw Error('지원하는 파일 형식을 선택하세요.');
+  const type = bytes[0] === 137 && latin.slice(1,4) === 'PNG' ? 'image/png'
+    : bytes[0] === 255 && bytes[1] === 216 ? 'image/jpeg'
+    : latin.startsWith('RIFF') && latin.slice(8,12) === 'WEBP' ? 'image/webp'
+    : latin.startsWith('GIF87a') || latin.startsWith('GIF89a') ? 'image/gif'
+    : latin.startsWith('%PDF-') ? 'application/pdf'
+    : claimed === 'text/plain' && !bytes.includes(0) ? 'text/plain' : null;
+  if (!type || (imagesOnly && !imageTypes.includes(type))) {
+    throw Error(imagesOnly ? 'PNG·JPG·GIF·WebP 이미지만 올릴 수 있습니다.' : 'PNG·JPG·GIF·WebP 이미지, PDF, TXT만 올릴 수 있습니다.');
+  }
   const id = uid();
   return { meta:{ id, name:textValue(file.name, 180), type, size:file.size }, blob:file.slice(0,file.size,type) };
 }
