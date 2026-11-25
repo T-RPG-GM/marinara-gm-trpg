@@ -1391,8 +1391,7 @@
 @media (prefers-reduced-motion: reduce) { .coc7-game-workspace .memory-phase.is-running .memory-phase-dot { animation: none; } }
 
 /* Phones are for reading the story back: a one-line header without the portrait and illustration row,
-   bigger text, message buttons folded behind ⋯, the input folded to one line, and the panel tabs in one sideways row. */
-.coc7-game-workspace button.tools-toggle { display: none; }
+   bigger text, message buttons shown by tapping the message, the input folded to one line, and the panel tabs in one sideways row. */
 @container coc7 (width < 700px) {
   .coc7-game-workspace .workspace-head { padding: .4rem .75rem; padding-top: max(.4rem,env(safe-area-inset-top)); }
   .coc7-game-workspace .game-heading { flex-wrap: nowrap; align-items: baseline; min-width: 0; gap: .5rem; }
@@ -1403,17 +1402,12 @@
   .coc7-game-workspace .chat-heading { display: none; }
   .coc7-game-workspace .timeline { gap: .75rem; padding: .7rem .45rem; }
   .coc7-game-workspace .message-text { font-size: 15px; line-height: 1.78; }
-  .coc7-game-workspace .message-tools { top: auto; bottom: .2rem; right: .25rem; transform: none; opacity: 1; pointer-events: auto; }
-  .coc7-game-workspace .message-tools > button:not(.tools-toggle) { display: none; }
-  .coc7-game-workspace .message-tools.open > button { display: grid; }
-  .coc7-game-workspace .message-tools > button.tools-toggle {
-    display: grid; place-items: center; width: 1.6rem; min-height: 1.4rem; padding: 0;
-    border-color: transparent; background: transparent; box-shadow: none;
-    color: var(--coc-quiet); font-size: 1rem; font-weight: 800; line-height: 1;
-  }
-  .coc7-game-workspace .message-tools.open > button.tools-toggle { border-color: var(--coc-stroke); background: var(--coc-card); color: var(--coc-text); }
-  .coc7-game-workspace .message:not(.spacer):has(.message-tools) .message-body { padding-bottom: 1.5rem; }
-  .coc7-game-workspace .dice-card.message-with-tools { padding-bottom: 1.4rem; }
+  /* A tapped message shows its buttons at its bottom right, with room made under the text so they cover nothing. */
+  .coc7-game-workspace .message-tools { display: none; top: auto; bottom: .3rem; right: .3rem; transform: none; opacity: 1; pointer-events: auto; }
+  .coc7-game-workspace .message-tools.open { display: flex; }
+  .coc7-game-workspace :is(.message,.dice-card):has(.message-tools.open) { outline: 2px solid var(--coc-accent); outline-offset: 2px; }
+  .coc7-game-workspace .message:has(.message-tools.open) .message-body { padding-bottom: 2.6rem; }
+  .coc7-game-workspace .dice-card:has(> .message-tools.open) { padding-bottom: 2.5rem; }
   .coc7-game-workspace .compose.folded { gap: 0; padding: .45rem .55rem; padding-bottom: max(.45rem,env(safe-area-inset-bottom)); }
   .coc7-game-workspace .compose.folded > :not(.compose-actions) { display: none; }
   .coc7-game-workspace .compose.folded .compose-actions { flex-wrap: nowrap; }

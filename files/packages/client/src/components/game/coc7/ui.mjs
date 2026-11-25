@@ -1106,20 +1106,9 @@ export function createWorkspace(container, adapter, options = {}) {
     return nodes;
   }
 
-  // On phones a message's buttons stay folded behind one ⋯ button so they do not cover the text.
+  // A message's buttons. On phones they stay hidden until the message itself is tapped (see the timeline's click).
   function toolGroup(label, ...controls) {
-    const group = el('div',{ class:'message-tools',role:'group','aria-label':label });
-    const toggle = button('⋯',() => {
-      const open = !group.classList.contains('open');
-      for (const other of surface.querySelectorAll('.message-tools.open')) {
-        other.classList.remove('open');
-        other.querySelector('.tools-toggle')?.setAttribute('aria-expanded','false');
-      }
-      group.classList.toggle('open',open);
-      toggle.setAttribute('aria-expanded',String(open));
-    },{ class:'tools-toggle',title:`${label} 열기`,'aria-label':`${label} 열기`,'aria-expanded':'false' });
-    group.append(toggle,...controls);
-    return group;
+    return el('div',{ class:'message-tools',role:'group','aria-label':label },...controls);
   }
 
   function messageTools(entry) {
@@ -3420,6 +3409,18 @@ export function createWorkspace(container, adapter, options = {}) {
       timeline.addEventListener('scroll',() => {
         timelineAtEnd = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 75;
       },{ passive:true });
+      // Phones: tapping a message opens its buttons (edit, bookmark, delete); tapping it again or another message
+      // closes them. Taps on links, buttons, images and other controls inside the message keep their own job.
+      timeline.addEventListener('click',(event) => {
+        if (surface.getBoundingClientRect().width >= 700) return;
+        if (event.target.closest('button,a,input,select,textarea,summary,label,img,video,audio')) return;
+        if (String(window.getSelection?.() ?? '')) return;
+        const holder = event.target.closest('.message,.dice-card.message-with-tools');
+        const group = holder?.querySelector(':scope > .message-tools, :scope > .persona-bubble > .message-tools');
+        const open = Boolean(group) && !group.classList.contains('open');
+        for (const other of surface.querySelectorAll('.message-tools.open')) other.classList.remove('open');
+        if (open) group.classList.add('open');
+      });
     }
     const availableTabs = Object.entries(tabs).filter(([key]) => key !== 'memory' || adapter.memoryRooms);
     const tabBar = el('nav',{ class:'tabs', 'aria-label':'캠페인 패널' },availableTabs.map(([key,label]) =>
