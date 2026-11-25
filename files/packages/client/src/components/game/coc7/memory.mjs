@@ -202,6 +202,26 @@ export function pickMemories(data, link, { context = '', personaName = '' } = {}
   return { entries };
 }
 
+/* "필요한 기억만": instead of the preset's whole {{기억}}, this game room's own library gives its two newest
+   scenes (so the story picks up where it stopped) and the memories that touch the scene now, up to ten in all. */
+// The card name comes first: a short sheet name ("마르첼로") may also be a separate, older entry in the library.
+export function pickGameMemories(data, names, { context = '', personaName = '' } = {}) {
+  const people = memoryPeople(data);
+  const person = names.filter(Boolean).map((name) => people.find((item) => item.name === name) ??
+    people.find((item) => item.matches.includes(memoryName(name)))).find(Boolean);
+  if (!person) return null;
+  const newest = memoryEntries(data,person,{ summaries:true }).filter((entry) => entry.kind === 'scene').slice(0,2).reverse()
+    .map(({ kind, label, text }) => ({ kind, label:`최근 · ${label}`, text }));
+  const { entries } = pickMemories(data,{ person:person.name, mode:'detailed' },{ context, personaName });
+  const seen = new Set(newest.map((entry) => entry.text));
+  const chosen = [...newest, ...entries.filter((entry) => !seen.has(entry.text))].slice(0,modeLimits.detailed);
+  if (!chosen.length) return null;
+  return {
+    guidance:`이 게임방의 기억 서재에서 고른 지난 이야기다. '최근'은 바로 앞 장면이고, 나머지는 지금 장면과 관련 있어 골라낸 기억이다. 장면에 필요할 때 사건·사실·호칭을 자연스럽게 반영한다. ${memoryCaution}`,
+    entries:chosen,
+  };
+}
+
 export function memoryBriefing(link, entries, personaName) {
   if (!entries.length) return null;
   const guidance = `${modeGuidance[link.mode]}${link.mode === 'relationship' && personaName ? ` (페르소나: ${personaName})` : ''} ${memoryCaution}`;

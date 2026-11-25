@@ -3288,12 +3288,14 @@ export function createWorkspace(container, adapter, options = {}) {
         next.settings.luckRule = values.has('luck');
         next.settings.rollMode = String(values.get('rollMode'));
         next.settings.replyLength = String(values.get('replyLength') ?? '');
+        next.settings.gameMemory = String(values.get('gameMemory') ?? '');
       }), [
         toggle('키퍼 입력 후 자동 응답',check('auto',state.settings.auto)),
         toggle('응답 모델에 공개 이미지 첨부 · 모델이 이미지를 지원할 때',check('vision',state.settings.vision)),
         toggle('선택 규칙 · 행운 소비 허용',check('luck',state.settings.luckRule)),
         field('판정 방식',select('rollMode',[['auto','키퍼 요청 직후 자동 굴림'],['approval','키퍼 승인 후 굴림'],['manual','키퍼가 직접 굴림 버튼 사용'],['private','키퍼 비공개 굴림']],state.settings.rollMode)),
         field('조사자 답변 길이',select('replyLength',replyLengths,state.settings.replyLength ?? '')),
+        field('이 게임방 기억 서재',select('gameMemory',[['','통째로 · 프리셋의 {{기억}} 칸 그대로'],['relevant','필요한 기억만 · 최근 장면과 지금 장면에 관련된 것만']],state.settings.gameMemory ?? '')),
       ])),
     ];
   }

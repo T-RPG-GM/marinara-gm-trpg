@@ -300,6 +300,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
               <li><strong>판정 방식</strong> · 자동, 승인 후, 직접, 비공개 중에서 골라요. <a href="#checks">판정과 주사위</a>에서 자세히 설명해요.</li>
               <li><strong>행운 소비 허용</strong> · 실패한 판정을 행운으로 바꾸는 선택 규칙이에요.</li>
               <li><strong>응답 모델에 공개 이미지 첨부</strong> · 모델이 이미지를 볼 수 있을 때만 켜요.</li>
+              <li><strong>이 게임방 기억 서재</strong> · 기억을 통째로 넣을지, 필요한 기억만 골라 넣을지 정해요. <a href="#memory">기억 서재</a>에서 자세히 설명해요.</li>
               <li><strong>조사자 답변 길이</strong> · AI 조사자 답변을 얼마나 길게 쓸지 골라요. 자유(지금처럼 제한 없음), 짧게(약 300자, 한 문단), 보통(약 600자, 2~3문단), 길게(약 1000자, 4문단 이상) 중 하나예요. 글자 수는 대략적인 기준이라 조금씩 달라질 수 있어요.</li>
             </ul>
           </div>
@@ -545,7 +546,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
             <div><dt>캠페인과 세션</dt><dd>세션을 추가하고, <strong>지금 저장</strong>, <strong>캠페인 백업 JSON</strong>, <strong>공개 채팅 JSON</strong>으로 저장해요. 빈 게임에서는 예전 백업을 복원할 수 있어요.</dd></div>
             <div><dt>세션 마무리</dt><dd>경험 체크된 기능의 성장 굴림, 시나리오 보상 SAN 회복, AI의 세션 요약을 한 번에 해요. <strong>마무리 후 후속 세션 시작</strong>을 켜고 <strong>후속 세션 이름</strong>을 적으면 같은 방에서 후속 이야기가 이어져요. 채팅에는 "제 2 장 · 후속 세션 이름" 같은 장 제목이 들어가서 어디서부터 새 이야기인지 보여요. 장 제목은 화면에만 보이고 AI에게는 가지 않아요. AI 요약에는 시간이 걸려서 그동안 버튼이 <strong>마무리하는 중…</strong>으로 바뀌어요. 끝나면 바로 위에 <strong>마무리 기록</strong>이 열려서 성장 결과와 AI 요약을 볼 수 있어요.</dd></div>
             <div><dt>리플레이 내보내기</dt><dd>공개된 대화와 판정을 책처럼 읽기 좋은 HTML 파일로 저장해요. 키퍼 메모, 비공개 굴림, 조사자 비밀은 빠져요.</dd></div>
-            <div><dt>게임 설정</dt><dd>자동 응답, 이미지 첨부, 행운 소비, 판정 방식, 조사자 답변 길이를 정해요.</dd></div>
+            <div><dt>게임 설정</dt><dd>자동 응답, 이미지 첨부, 행운 소비, 판정 방식, 조사자 답변 길이, 기억 서재를 넣는 양을 정해요.</dd></div>
           </dl>
         </article>
 
@@ -603,6 +604,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
             <li>기억 서재 탭 → <strong>이 게임 방을 기억 서재로</strong>를 켜요.</li>
             <li><strong>AI 답변마다 이어서 정리</strong>를 켜 두면 답변이 끝날 때마다 새 내용을 정리해요.</li>
             <li>쓰는 프롬프트 프리셋에 <code>{{기억}}</code>이 있어야 기억이 실제로 들어가요.</li>
+            <li><strong>기억을 얼마나 넣을지</strong> · 세션·설정 → 게임 설정 → <strong>이 게임방 기억 서재</strong>에서 골라요. <strong>통째로</strong>(기본)는 프리셋의 <code>{{기억}}</code> 칸이 지난 이야기 전체 흐름을 매번 넣어요. <strong>필요한 기억만</strong>은 <code>{{기억}}</code> 칸을 빼고, 바로 앞 장면 두 개와 지금 장면에 관련된 기억만 골라 최대 10개를 넣어요. 기억 부분이 1만 자 넘게 줄어서 답변마다 비용이 덜 들어요. 대신 전체 줄거리 목록이 빠지니, 오래전 일은 조사노트와 세션 요약에 더 기대요. 기억 서재를 읽지 못하면 그 답변은 통째로 넣어요.</li>
           </ul>
         </div>
         <div class="panel">
@@ -731,7 +733,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rul
       </div>
     </section>
 
-    <footer>Marinara Engine 2.5.2 기준으로 만든 마리나라 GM 전용 TRPG 1.1.38 설명서예요. 비공식 팬 프로젝트이고, 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요.</footer>
+    <footer>Marinara Engine 2.5.2 기준으로 만든 마리나라 GM 전용 TRPG 1.1.39 설명서예요. 비공식 팬 프로젝트이고, 크툴루의 부름(Call of Cthulhu)은 Chaosium Inc.의 상표예요.</footer>
   </main>
 </div>
 </body>

@@ -63,6 +63,8 @@ const inputSchema = z.object({
   presetSections: z
     .record(z.string().max(100), z.union([z.literal("all"), z.array(z.string().max(100)).max(400)]))
     .default({}),
+  /** The game picks this room's memories itself ("필요한 기억만"), so the preset's {{기억}} is left out. */
+  skipMemory: z.boolean().default(false),
 });
 
 type PresetSectionRow = {
@@ -99,6 +101,16 @@ function pickPresetSections<T extends PresetSectionRow>(sections: T[], choice: "
     return sections.filter((section) => ids.has(section.id));
   }
   return sections.filter(autoPresetSection);
+}
+
+/** Takes {{기억}} out of the sections; a section left with nothing but its tags goes too. */
+function withoutMemoryMacro<T extends PresetSectionRow>(sections: T[]): T[] {
+  return sections.flatMap((section) => {
+    const content = String(section.content ?? "");
+    if (!/\{\{\s*(?:기억|memory)\s*\}\}/iu.test(content)) return [section];
+    const rest = content.replace(/\{\{\s*(?:기억|memory)\s*\}\}/giu, "");
+    return rest.replace(/<\/?[^<>\n]{1,60}>/gu, "").trim() ? [{ ...section, content: rest }] : [];
+  });
 }
 
 const taskRules = {
@@ -704,7 +716,8 @@ export async function cocGameRoutes(app: FastifyInstance) {
             presets.listChoiceBlocksForPreset(preset.id),
           ]);
           // Only the sections this game sends from the preset: the Keeper's choice, or style sections and {{기억}}.
-          const sections = pickPresetSections(allSections, input.presetSections[preset.id]);
+          const picked = pickPresetSections(allSections, input.presetSections[preset.id]);
+          const sections = input.skipMemory ? withoutMemoryMacro(picked) : picked;
           const assembled = await assemblePrompt({
             db: app.db,
             model,
