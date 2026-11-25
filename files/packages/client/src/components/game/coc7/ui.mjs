@@ -1527,7 +1527,7 @@ export function createWorkspace(container, adapter, options = {}) {
     const suggestions = ['/desc','/as','/em','/check','/roll','/gmroll','/toai','/w', ...(persona ? ['/keeper'] : []), ...state.macros.map((macro) => `#${macro.name}`)];
     const helper = el('div', { class:'suggestions' });
     const composer = textarea('keeper',draft,{ id:'coc7-keeper-input',rows:3,enterkeyhint:'send',
-      title:'Enter로 보내기 · Shift+Enter로 줄바꿈',placeholder:persona ? `페르소나 대사, /e(/em) 행동, /d(/desc) 장면, /a(/as) NPC, /c(/check) 판정 · pc → ${state.sheet.name}, npc → ${persona.name}` : `장면이나 NPC 대사를 입력하세요. /d(/desc), /a(/as), /c(/check), /t(/toai) · pc → ${state.sheet.name}`,
+      title:'Enter로 보내기 · Shift+Enter로 줄바꿈',placeholder:persona ? `페르소나 대사, /e(/em) 행동, /d(/desc) 장면, /a(/as) NPC, /c(/check) 판정 · pc → ${state.sheet.name}, npc·kpc → ${persona.name}` : `장면이나 NPC 대사를 입력하세요. /d(/desc), /a(/as), /c(/check), /t(/toai) · pc → ${state.sheet.name}`,
       'aria-label':persona ? '플레이 메시지' : '키퍼 메시지' });
     const updateSuggestions = () => {
       const prefix = composer.value.trimStart();
@@ -1573,9 +1573,9 @@ export function createWorkspace(container, adapter, options = {}) {
         button('⌄',() => setComposeHidden(true),{ class:'mobile-only compose-hide',title:'입력창 숨기기','aria-label':'입력창 숨기기' })));
   }
 
-  // Shorthand in typed text: "npc" becomes the linked persona's name and "pc" the investigator's name,
+  // Shorthand in typed text: "npc" or "kpc" becomes the linked persona's name and "pc" the investigator's name,
   // so the chat, the replay and the model all read the real names. Only whole Latin-letter words change
-  // ("npc가", "pc한테" do; "kpc", "pcs" do not); "npc" is left alone while no persona is linked.
+  // ("npc가", "kpc는", "pc한테" do; "pcs" does not); "npc" and "kpc" are left alone while no persona is linked.
   // Short forms of commands, expanded at the start of any line: "/d" is "/desc".
   function expandCommandAliases(text) {
     return String(text).replace(/^([ \t]*)(\/[a-z]+)(?=\s|$)/gim,(match, indent, command) => `${indent}${commandAliases[command.toLowerCase()] ?? command}`);
@@ -1600,7 +1600,7 @@ export function createWorkspace(container, adapter, options = {}) {
     const persona = playerPersona()?.name;
     const investigator = state.sheet.name;
     let result = String(text);
-    if (persona) result = swap(result,new RegExp(`(?<![A-Za-z0-9])npc(?![A-Za-z0-9])${particles}`,'gi'),persona);
+    if (persona) result = swap(result,new RegExp(`(?<![A-Za-z0-9])[nk]pc(?![A-Za-z0-9])${particles}`,'gi'),persona);
     if (investigator) result = swap(result,new RegExp(`(?<![A-Za-z0-9])pc(?![A-Za-z0-9])${particles}`,'gi'),investigator);
     return result;
   }
