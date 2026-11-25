@@ -369,6 +369,21 @@ export const scenarioFields = { era:{ label:'시대 배경' }, overview:{ label:
 
 // Only the era and the public premise ever reach the model, and only once the Keeper has saved the note,
 // so the default era of a new campaign is never imposed on a scenario set elsewhere.
+export const replyLengths = [
+  ['','자유 · 지금처럼 제한 없음'],
+  ['short','짧게 · 약 300자 (한 문단)'],
+  ['medium','보통 · 약 600자 (2~3문단)'],
+  ['long','길게 · 약 1000자 (4문단 이상)'],
+];
+const replyLengthGuides = {
+  short:'조사자 답변(action과 dialogue를 합친 글)은 한국어 약 300자, 한 문단 안팎으로 짧게 쓴다.',
+  medium:'조사자 답변(action과 dialogue를 합친 글)은 한국어 약 600자, 2~3문단으로 쓴다.',
+  long:'조사자 답변(action과 dialogue를 합친 글)은 한국어 약 1000자, 4문단 이상으로 넉넉하게 쓴다.',
+};
+export function replyLengthGuide(state) {
+  return replyLengthGuides[state.settings.replyLength] ?? '';
+}
+
 export function scenarioBriefing(state) {
   const scenario = state.scenario;
   if (!scenario?.savedAt) return null;
