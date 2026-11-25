@@ -218,7 +218,7 @@
   width: min(90%,39rem);
   align-self: flex-end;
 }
-.coc7-game-workspace .message.npc { --message-band: var(--coc-base-accent); }
+.coc7-game-workspace .message.npc { --message-band: var(--coc-base-accent); width: fit-content; min-width: min(12rem,96%); max-width: min(96%,43rem); }
 .coc7-game-workspace .message.artifact { --message-band: var(--coc-band); width: min(100%,37rem); }
 .coc7-game-workspace .message.selected-scene { outline: 2px solid var(--coc-accent); outline-offset: 2px; }
 .coc7-game-workspace .message-tools {
