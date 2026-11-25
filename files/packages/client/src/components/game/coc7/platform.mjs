@@ -14,7 +14,8 @@ export function dataUrl(blob) {
 
 const mimeByExtension = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', webp:'image/webp', pdf:'application/pdf', txt:'text/plain' };
 export async function assetFromFile(file, imagesOnly = false) {
-  if (!file || file.size <= 0 || file.size > 2_000_000) throw Error('파일 하나에 최대 2MB까지 첨부할 수 있습니다.');
+  if (!file || file.size <= 0) throw Error('빈 파일은 첨부할 수 없습니다.');
+  if (file.size > 60_000_000) throw Error('파일 하나에 최대 60MB까지 고를 수 있습니다.');
   // The file's first bytes decide its type, so a WebP renamed to .png still uploads as WebP.
   // Plain text has no signature, so only a .txt (or text/plain) file may fall back to it.
   const claimed = mimeByExtension[file.name.split('.').pop().toLowerCase()] ?? file.type;
@@ -31,6 +32,11 @@ export async function assetFromFile(file, imagesOnly = false) {
   if (!type || (imagesOnly && !imageTypes.includes(type))) {
     throw Error(imagesOnly ? 'PNG·JPG·GIF·WebP 이미지만 올릴 수 있습니다.' : 'PNG·JPG·GIF·WebP 이미지, PDF, TXT만 올릴 수 있습니다.');
   }
+  // Stored files and images sent to the model stay within 2MB; a bigger image is made smaller instead of refused.
+  if (file.size > 2_000_000) {
+    if (imageTypes.includes(type)) return assetFromFile(await shrinkImage(file), imagesOnly);
+    throw Error('PDF·TXT 파일은 하나에 최대 2MB까지 첨부할 수 있습니다.');
+  }
   const id = uid();
   return { meta:{ id, name:textValue(file.name, 180), type, size:file.size }, blob:file.slice(0,file.size,type) };
 }
@@ -45,8 +51,30 @@ async function avifToPng(file) {
   bitmap.close();
   const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!png) throw Error('AVIF 이미지를 PNG로 바꾸지 못했습니다.');
-  if (png.size > 2_000_000) throw Error('AVIF 이미지를 PNG로 바꾸니 2MB를 넘습니다. 크기를 줄여 올려 주세요.');
   return new File([png], `${file.name.replace(/\.[^.]*$/, '') || 'image'}.png`, { type:'image/png' });
+}
+
+// Re-encodes as WebP (keeps transparency), first at most 2400px on the long side, then smaller and at lower
+// quality until it fits. An animated GIF keeps only its first frame.
+async function shrinkImage(file) {
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) throw Error('이 이미지를 열 수 없어 크기를 줄이지 못했습니다. 2MB 이하로 줄여 올려 주세요.');
+  const canvas = document.createElement('canvas');
+  let scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+  try {
+    for (let tries = 0; tries < 10; tries++, scale *= 0.8) {
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.9, 0.8, 0.7]) {
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+        if (blob?.type === 'image/webp' && blob.size <= 1_900_000) return new File([blob], `${file.name.replace(/\.[^.]*$/, '') || 'image'}.webp`, { type:'image/webp' });
+      }
+    }
+  } finally {
+    bitmap.close();
+  }
+  throw Error('이미지를 2MB 이하로 줄이지 못했습니다. 크기를 줄여 올려 주세요.');
 }
 
 export async function makeBackup(state, vault) {
