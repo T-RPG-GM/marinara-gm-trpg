@@ -1,5 +1,5 @@
 /* global crypto, structuredClone */
-import { ATTR, DIFFICULTY, LEVEL, SKILL_CATEGORIES, classify, creationIssues, derived, die, growth, hasManualOccupationPoints, integer, normalized, opposed, percentile, rollDice, skillCategory, skillReference, skillStartingValue, spendLuck } from './rules.mjs';
+import { ATTR, DIFFICULTY, LEVEL, SKILL_CATEGORIES, classify, creationIssues, derived, die, growth, hasManualOccupationPoints, integer, normalized, opposed, percentile, referenceSkillList, rollDice, skillCategory, skillReference, skillStartingValue, spendLuck } from './rules.mjs';
 import { currentMemoryReference, validMemoryLink, validMemoryReference } from './memory.mjs';
 
 export const SCHEMA = 1;
@@ -170,7 +170,13 @@ export function stat(state, name, personaId) {
 
 export function rollCheck(state, request, random = die) {
   const { personaId } = request;
-  const target = stat(state,request.name,personaId);
+  let target = stat(state,request.name,personaId);
+  // A printed skill nobody wrote on the sheet (회피 on a card that lists only a few skills) still has its
+  // starting value in the rules, so it is added at that value and rolled, and can grow from then on.
+  if (!target && referenceSkillList(sheetFor(state,personaId)).some((item) => normalized(item.name) === normalized(request.name))) {
+    addSkill(state,request.name,undefined,true,personaId);
+    target = stat(state,request.name,personaId);
+  }
   if (!target) throw Error('시트에서 판정할 능력치나 기능을 찾을 수 없습니다.');
   if (request.parent && state.rollHistory.some((roll) => roll.parent === request.parent && roll.pushed)) throw Error('이미 강행한 판정입니다.');
   const roll = {
