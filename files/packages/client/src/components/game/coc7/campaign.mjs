@@ -726,6 +726,19 @@ export function isIllustrationScene(entry) {
   return ['scene','keeper','npc','emote','persona','investigator'].includes(entry.type) && Boolean(entry.text.trim());
 }
 
+// Clothing in a card's image tags is the character's usual wear. Taken out of the tags that are inserted word for
+// word, it reaches the prompt writer only as a hint, so the outfit can follow the setting and the scene.
+const clothingTag = /\b(?:formal|suits?|tuxedo|neckties?|bow ?ties?|ties|shirts?|blouses?|jackets?|coats?|overcoat|blazers?|vests?|waistcoat|trench|hoodies?|sweaters?|cardigans?|turtleneck|dress|skirts?|pants|trousers|jeans|shorts|uniforms?|kimono|hanbok|robes?|gloves|shoes|boots|heels|sneakers|hats?|cap|scarf|capes?|cloak|armor|apron|outfits?|clothes|clothing|attire|sleeves?)\b/i;
+export function splitClothingTags(tags) {
+  const kept = [];
+  const clothing = [];
+  for (const tag of String(tags ?? '').split(',').map((item) => item.trim()).filter(Boolean)) {
+    const core = tag.replace(/[{}[\]]/g,'').replace(/^-?[\d.]+::/,'').replace(/::$/,'');
+    (clothingTag.test(core) ? clothing : kept).push(tag);
+  }
+  return { tags:kept.join(', '), clothing:clothing.join(', ') };
+}
+
 export function illustrationPrompt(state, sourceIds, persona) {
   const wanted = new Set(sourceIds);
   const scenes = state.timeline.filter((entry) => !entry.trashedAt && wanted.has(entry.id) && isIllustrationScene(entry));
@@ -755,8 +768,10 @@ export function illustrationPrompt(state, sourceIds, persona) {
     const kept = parts.filter((tag) => !/^(?:[\d.]+::)?\s*solo\s*(?:::)?$/i.test(tag));
     return kept.length === parts.length ? tags : kept.filter(Boolean).join(', ');
   };
-  const override = portraitOnly(investigatorOverride);
-  const personaOverride = portraitOnly(personaOverrideTags);
+  const investigatorSplit = splitClothingTags(portraitOnly(investigatorOverride));
+  const personaSplit = splitClothingTags(portraitOnly(personaOverrideTags));
+  const override = investigatorSplit.tags;
+  const personaOverride = personaSplit.tags;
   const investigatorLabel = textValue(state.sheet.name || state.card.name,120) || '조사자';
   const personaLabel = personaName || '페르소나';
   // The override tags go to the server, which puts them word for word where the prompt writer left each
@@ -766,17 +781,24 @@ export function illustrationPrompt(state, sourceIds, persona) {
     personaOverride && { name:personaLabel, tags:personaOverride },
   ].filter(Boolean);
   const markers = appearances.map(({ name }) => `@@${name}@@`).join(', ');
-  const look = (label, name, tags, text) => tags
+  const look = (label, name, tags, text, clothing) => (tags
     ? `${label} 외형 · ${name} · 이미지용 외모(@@${name}@@ 자리에 자동으로 들어감): ${tags}${text ? `\n(참고 설명: ${text})` : ''}`
-    : text ? `${label} 외형 · ${name} · ${text}` : '';
+    : text ? `${label} 외형 · ${name} · ${text}` : '') + (clothing ? `\n(평소 차림 · 세계관과 장면에 맞을 때만 씀: ${clothing})` : '');
+  // The setting the Keeper wrote in the scenario tab, so clothes and surroundings fit the world, not only the scene.
+  const scenario = state.scenario?.savedAt ? state.scenario : null;
+  const era = textValue(scenario?.era,200);
+  const overview = textValue(scenario?.overview,700);
+  const setting = era || overview ? `세계관·시대 배경${era ? ` · ${era}` : ''}${overview ? `\n${overview}` : ''}` : '';
   const placement = !appearances.length ? ''
     : `이미지용 외모 태그는 직접 옮겨 쓰지 말고, 그 인물 태그 맨 앞에 자리표시 ${markers}를 글자 그대로 쓴다. 그 자리에 외모 태그가 자동으로 들어간다. 자리표시 뒤에는 그 인물의 동작·표정·상태 태그만 쓴다.`;
   const prompt = [
     '크툴루 신화풍 호러 TRPG 삽화. 아래에 고른 장면을 진행 순서대로 참고한다. 서로 다른 순간이면 마지막 장면을 중심으로 앞 장면의 시각적 단서를 반영한다.',
     together ? '두 인물이 함께 보이면 인물마다 " | "로 나눈 구간을 하나씩 만들고, 다른 인물의 특징을 섞지 않는다.' : '',
+    setting,
+    '인물의 옷차림 태그는 직접 정한다. 세계관·시대 배경과 지금 장면의 상황(장소, 날씨, 잠자리, 부상, 오랜 생존 등)에 맞는 옷을 고르고, 외형 설명이나 평소 차림에 적힌 옷(정장 등)은 그 세계와 장면에 어울릴 때만 쓴다. 어울리지 않으면 그 상황에 맞는 옷으로 바꾼다.',
     placement,
-    look('조사자',investigatorLabel,override,appearance),
-    personaShown ? look('플레이어 페르소나',personaLabel,personaOverride,personaAppearance) : '',
+    look('조사자',investigatorLabel,override,appearance,investigatorSplit.clothing),
+    personaShown ? look('플레이어 페르소나',personaLabel,personaOverride,personaAppearance,personaSplit.clothing) : '',
     ...scenes.map((entry) => `[${labels[entry.type]}${entry.speaker ? ` · ${entry.speaker}` : ''}]\n${entry.text}`),
   ].filter(Boolean).join('\n\n');
   if (prompt.length > 7000) throw Error('선택한 장면이 너무 깁니다. 장면 수를 줄여 주세요.');
