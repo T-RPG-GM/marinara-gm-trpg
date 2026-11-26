@@ -695,7 +695,18 @@ export function createWorkspace(container, adapter, options = {}) {
     const cell = (value, kind = '', title) => el('span',{ class:`sheet-cell${kind ? ` ${kind}` : ''}`,title },value);
     const box = (title, ...content) => el('section',{ class:'sheet-box' },el('h4',{},title),el('div',{ class:'sheet-box-body' },content));
     const info = (label, value) => el('div',{},el('dt',{},label),el('dd',{},value === '' || value == null ? '—' : String(value)));
-    const levels = (value) => [cell(half(value),'sub','어려운 성공 (절반)'),cell(fifth(value),'sub','극단적 성공 (1/5)')];
+    // A characteristic, Luck, SAN or skill rolls like /check when clicked: the name and value cell roll a regular check,
+    // the half cell a hard one and the fifth cell an extreme one. The sheet closes so the result shows in the chat.
+    const rollFromSheet = (name, difficulty) => {
+      dialog.close();
+      const line = `/check ${personaId ? '페르소나' : '조사자'} ${name}${difficulty === 'regular' ? '' : ` | ${difficulty}`}`;
+      void run(() => sendLines([line],sheet.name),'',false,true);
+    };
+    const rollTitle = (name, difficulty) => `눌러서 ${name} ${DIFFICULTY[difficulty]} 판정`;
+    const rollCell = (value, kind, title, name, difficulty = 'regular') => name
+      ? el('button',{ type:'button',class:`sheet-cell sheet-roll ${kind}`,title:[title,rollTitle(name,difficulty)].filter(Boolean).join(' · '),onclick:() => rollFromSheet(name,difficulty) },value)
+      : cell(value,kind,title);
+    const levels = (value, name) => [rollCell(half(value),'sub','어려운 성공 (절반)',name,'hard'),rollCell(fifth(value),'sub','극단적 성공 (1/5)',name,'extreme')];
 
     const source = personaId ? (safeImageUrl(persona?.avatarPath) ? { remote:persona.avatarPath } : null) : portraitSource();
     const photo = source ? (source.asset ? assetImage(source.asset,`${sheet.name} 사진`) : sourceImage(source.remote,`${sheet.name} 사진`))
@@ -710,19 +721,19 @@ export function createWorkspace(container, adapter, options = {}) {
 
     const attributes = box('특성치',el('div',{ class:'sheet-attributes' },
       Object.entries(ATTR).map(([key,label]) => el('div',{ class:'sheet-attribute' },
-        el('span',{ class:'sheet-label' },label),cell(sheet.attributes[key],'main'),el('span',{ class:'sheet-levels' },levels(sheet.attributes[key])))),
+        el('span',{ class:'sheet-label' },label),rollCell(sheet.attributes[key],'main','현재 값',label),el('span',{ class:'sheet-levels' },levels(sheet.attributes[key],label)))),
       el('div',{ class:'sheet-attribute' },el('span',{ class:'sheet-label' },'이동력'),cell(limits.mov,'main'))));
 
     // Conditions show as words only while they apply; the sheet has no checkboxes.
     const wounds = condition ? [['dead','사망'],['dying','빈사'],['unconscious','의식불명'],['wound','중상']].filter(([key]) => condition[key]).map(([,label]) => label) : [];
     const insanity = condition?.insanity ?? '';
-    const pair = (current, max, label) => el('div',{ class:'sheet-pair' },el('span',{ class:'sheet-label' },label),cell(current,'main'),
+    const pair = (current, max, label, roll) => el('div',{ class:'sheet-pair' },el('span',{ class:'sheet-label' },label),rollCell(current,'main',undefined,roll),
       max == null ? null : [el('span',{ class:'sheet-slash' },'/'),cell(max,'max','최대')]);
     const vitals = el('div',{ class:'sheet-vitals' },
       box('체력',pair(sheet.hp,limits.hp,'현재'),wounds.length ? el('p',{ class:'sheet-status' },wounds.join(' · ')) : null),
-      box('행운',el('div',{ class:'sheet-pair' },el('span',{ class:'sheet-label' },'현재'),cell(sheet.luck,'main'),levels(sheet.luck))),
+      box('행운',el('div',{ class:'sheet-pair' },el('span',{ class:'sheet-label' },'현재'),rollCell(sheet.luck,'main','현재 값','행운'),levels(sheet.luck,'행운'))),
       box('마력',pair(sheet.mp,limits.mp,'현재')),
-      box('이성',pair(sheet.san,limits.san,'현재'),
+      box('이성',pair(sheet.san,limits.san,'현재','이성'),
         condition ? el('div',{ class:'sheet-pair' },el('span',{ class:'sheet-label' },'시작'),cell(condition.sanAtStart,'max')) : null,
         insanity ? el('p',{ class:'sheet-status' },insanity) : null),
       box('피해 보너스 · 체구',el('div',{ class:'sheet-pair' },el('span',{ class:'sheet-label' },'피해'),cell(limits.db,'main'),
@@ -748,10 +759,11 @@ export function createWorkspace(container, adapter, options = {}) {
     columns.growth.push(...sheet.skills.filter((skill) => !owned.has(skill)).sort((a,b) => a.name.localeCompare(b.name,'ko')));
 
     const skillRow = (skill) => el('li',{ class:skill.value > skill.base ? 'is-owned' : 'is-base' },
-      el('span',{ class:'sheet-skill-name' },el('span',{},skill.name)),
+      el('button',{ type:'button',class:'sheet-skill-name sheet-roll',title:rollTitle(skill.name,'regular'),onclick:() => rollFromSheet(skill.name,'regular') },
+        el('span',{},skill.name)),
       cell(skill.base,'base','기본값'),
-      cell(skill.value,'main','현재 값'),
-      levels(skill.value));
+      rollCell(skill.value,'main','현재 값',skill.name),
+      levels(skill.value,skill.name));
     const pointHead = ({ used, budget, overBudget }, label) =>
       el('div',{ class:`sheet-column-head${overBudget ? ' over' : ''}`,title:overBudget ? '배정 가능한 점수를 넘었습니다' : undefined },
         el('span',{ class:'sheet-column-label' },label),cell(used,'main','사용한 점수'),el('span',{ class:'sheet-slash' },'/'),cell(budget,'max','배정 가능'));
@@ -1614,15 +1626,21 @@ export function createWorkspace(container, adapter, options = {}) {
     const sheet = personaSheet(state,player?.id);
     const expanded = withShorthandNames(macro ? previewMacro(source,sheet ? player.id : undefined) : source);
     if (!expanded) return;
+    await sendLines(macro ? expanded.split(/\r?\n/).filter((value) => value.trim()) : [expanded],sheet?.name);
+    if (draft === typed) draft = '';
+  }
+
+  // Sends lines as the linked persona would type them; the character sheet's clicked rolls come through here too.
+  async function sendLines(lines, roller) {
+    const player = playerPersona();
     const attribution = player && { personaId:player.id, speaker:textValue(player.name,150), personaAvatar:safeImageUrl(player.avatarPath) ? player.avatarPath : '' };
     await transact((next) => {
-      for (const line of macro ? expanded.split(/\r?\n/).filter((value) => value.trim()) : [expanded]) {
-        if (/^\s*\/check\s/i.test(line) && ['auto','private'].includes(next.settings.rollMode)) announce(`${sheet?.name || next.sheet.name} 주사위 굴리는 중…`);
+      for (const line of lines) {
+        if (/^\s*\/check\s/i.test(line) && ['auto','private'].includes(next.settings.rollMode)) announce(`${roller || next.sheet.name} 주사위 굴리는 중…`);
         const result = handleInput(next,line,undefined,attribution);
         if (result?.kind && Object.hasOwn(result, 'public')) flashRoll = result.id;
       }
     });
-    if (draft === typed) draft = '';
     followLatest = true;
     announce('');
   }

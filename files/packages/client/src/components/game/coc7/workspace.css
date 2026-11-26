@@ -869,6 +869,11 @@
 .coc7-game-workspace .sheet-cell.sub { min-width: 1.85rem; font-size: .82rem; color: var(--coc-text); background: var(--sheet-mid); }
 .coc7-game-workspace .sheet-cell.base { min-width: 1.85rem; font-size: .8rem; color: var(--coc-quiet); background: var(--sheet-soft); }
 .coc7-game-workspace .sheet-cell.max { color: var(--coc-quiet); }
+/* Rollable cells and skill names keep the sheet's look and only answer the pointer. */
+.coc7-game-workspace button.sheet-roll { border-radius: 0; font: inherit; font-weight: inherit; color: inherit; }
+.coc7-game-workspace button.sheet-cell.sheet-roll:hover { border-color: var(--sheet-band); background: var(--sheet-soft); }
+.coc7-game-workspace button.sheet-skill-name { min-height: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; border: 0; background: none; text-align: left; }
+.coc7-game-workspace button.sheet-skill-name:hover { background: none; text-decoration: underline; }
 
 .coc7-game-workspace .sheet-info { display: grid; margin: 0; }
 .coc7-game-workspace .sheet-info > div {

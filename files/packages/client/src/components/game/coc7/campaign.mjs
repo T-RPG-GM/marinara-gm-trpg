@@ -168,12 +168,16 @@ export function stat(state, name, personaId) {
   return skill && { name:skill.name, value:skill.value, key:skill.id, skill };
 }
 
+function printedSkill(state, name, personaId) {
+  return referenceSkillList(sheetFor(state,personaId)).some((item) => normalized(item.name) === normalized(name));
+}
+
 export function rollCheck(state, request, random = die) {
   const { personaId } = request;
   let target = stat(state,request.name,personaId);
   // A printed skill nobody wrote on the sheet (회피 on a card that lists only a few skills) still has its
   // starting value in the rules, so it is added at that value and rolled, and can grow from then on.
-  if (!target && referenceSkillList(sheetFor(state,personaId)).some((item) => normalized(item.name) === normalized(request.name))) {
+  if (!target && printedSkill(state,request.name,personaId)) {
     addSkill(state,request.name,undefined,true,personaId);
     target = stat(state,request.name,personaId);
   }
@@ -306,7 +310,7 @@ export function handleInput(state, input, random = die, persona = null) {
       }
       const parts = text.split('|').map((part) => part.trim());
       const [name, difficulty = 'regular', modifier = '0'] = parts;
-      if (parts.length > 3 || !stat(state,name,target) || !Object.hasOwn(DIFFICULTY,difficulty)) throw Error('사용법: /check [조사자 이름 또는 pc] 기능명 | regular/hard/extreme | -2~2');
+      if (parts.length > 3 || !(stat(state,name,target) || printedSkill(state,name,target)) || !Object.hasOwn(DIFFICULTY,difficulty)) throw Error('사용법: /check [조사자 이름 또는 pc] 기능명 | regular/hard/extreme | -2~2');
       const request = { id:uid(), name, difficulty, modifier:integer(modifier,-2,2,'보너스/페널티'), public:state.settings.rollMode !== 'private', personaId:target };
       if (state.settings.rollMode === 'manual' || state.settings.rollMode === 'approval') {
         state.pending.push(request);
