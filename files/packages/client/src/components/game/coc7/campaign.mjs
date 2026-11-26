@@ -510,7 +510,8 @@ export function secretBriefing(state) {
 }
 
 export function sessionSummaries(state, limit = 5) {
-  return investigatorNotes(state).filter((item) => item.kind === 'summary' && !item.aiOff).slice(-limit).map(({ text, session }) => ({ session, text }));
+  const remembered = rememberedNoteIds(state);
+  return investigatorNotes(state).filter((item) => item.kind === 'summary' && remembered.has(item.id)).slice(-limit).map(({ text, session }) => ({ session, text }));
 }
 
 // Public log of one session, in the shape the summary model reads.
@@ -857,7 +858,8 @@ export function turnPayload(state, personaId) {
   }).filter(Boolean);
   const instructions = state.privateLog.filter((entry) => entry.type === 'instruction' && !entry.used);
   const handouts = state.handouts.filter((item) => item.public === true).map(({ id, title, description, text, assetId }) => ({ id, title, description, text, assetId, evidence:`handout-${id}` }));
-  const facts = investigatorNotes(state).filter((item) => ['fact','learned','hypothesis'].includes(item.kind) && !item.aiOff).map((item) => ({
+  const remembered = rememberedNoteIds(state);
+  const facts = investigatorNotes(state).filter((item) => ['fact','learned','hypothesis'].includes(item.kind) && remembered.has(item.id)).map((item) => ({
     kind:item.kind, text:item.text,
     ...(canReviseNote(item) ? { noteId:item.id } : {}),
     ...(item.keeperEdited ? { keeperEdited:true } : {}),
@@ -870,6 +872,22 @@ export function turnPayload(state, personaId) {
 export function investigatorNotes(state) {
   const character = state.settings.cardId || 'local';
   return state.notes.filter((note) => !note.characterId || note.characterId === character);
+}
+
+// The note kinds the keeper chooses for the AI to remember: facts, what the AI learned, hypotheses and session summaries.
+export const rememberedNoteKinds = ['fact','learned','hypothesis','summary'];
+
+// How many of the newest notes the AI keeps remembering as more are added (settings.keepNotes), or 0 when each note's own tick decides.
+export function keepNotesLimit(state) {
+  const limit = state.settings.keepNotes;
+  return Number.isSafeInteger(limit) && limit > 0 ? limit : 0;
+}
+
+// Ids of the notes the AI sees. With keepNotes set only the newest that many count, however many are added later.
+export function rememberedNoteIds(state) {
+  const notes = investigatorNotes(state).filter((item) => rememberedNoteKinds.includes(item.kind));
+  const limit = keepNotesLimit(state);
+  return new Set((limit ? notes.slice(-limit) : notes.filter((item) => !item.aiOff)).map((item) => item.id));
 }
 
 const isAiNoteKind = (kind) => kind === 'learned' || kind === 'hypothesis';

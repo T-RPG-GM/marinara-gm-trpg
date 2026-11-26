@@ -1,6 +1,6 @@
 /* global document, fetch, navigator, createImageBitmap, Node, DOMParser, clearTimeout, setTimeout, FormData, AbortController, structuredClone, URL, window */
 import { ATTR, DIFFICULTY, LEVEL, SKILL_CATEGORIES, ageRules, referenceSkillList, skillReference, applyAge, creationIssues, creationPointUsage, derived, integer, normalized, rollDice, skillCategory, skillGrowthAmount, skillStartingValue } from './rules.mjs';
-import { defaultHistoryLimit, replyLengths, historyLimit, buildReplayHtml, commandAliases, rollText, currentInvestigatorSecret, scenarioFields, wrapUpSession, acceptTurn, addSkill, advanceSkill, append, applyCardProfile, applyCardSheetValues, applyProposal, audit, syncSheetProfile, buildPublicContext, capResources, cardAutoTargets, cardProfileFields, createCampaign, createSheet, evaluateProposal, expandMacro, handleInput, illustrationPrompt, imageTypes, injury, investigatorNotes, isIllustrationScene, latestRerollableTurn, pendingCount, personaSheet, pinnedMessageLimit, rerollTurnState, resolveIdea, revealSpot, rollCheck, rollSpot, rollGeneric, sanity, setSkillCategory, sheetFor, stat, textValue, uid } from './campaign.mjs';
+import { defaultHistoryLimit, replyLengths, historyLimit, buildReplayHtml, commandAliases, rollText, currentInvestigatorSecret, scenarioFields, wrapUpSession, acceptTurn, addSkill, advanceSkill, append, applyCardProfile, applyCardSheetValues, applyProposal, audit, syncSheetProfile, buildPublicContext, capResources, cardAutoTargets, cardProfileFields, createCampaign, createSheet, evaluateProposal, expandMacro, handleInput, illustrationPrompt, imageTypes, injury, investigatorNotes, keepNotesLimit, rememberedNoteIds, rememberedNoteKinds, isIllustrationScene, latestRerollableTurn, pendingCount, personaSheet, pinnedMessageLimit, rerollTurnState, resolveIdea, revealSpot, rollCheck, rollSpot, rollGeneric, sanity, setSkillCategory, sheetFor, stat, textValue, uid } from './campaign.mjs';
 import { assetFromFile, dataUrl, downloadFile, importBackup, makeBackup, parseModelJson, sendTurn, suggestionInput, summarizeSession } from './platform.mjs';
 import { actionDex, attack, changeCombatantHealth, chaseMoves, enemyAttack, heal, resolveDying, spendMagic } from './advanced.mjs';
 import { createMemoryLink, currentMemoryLink, memoryModes, memoryPeople } from './memory.mjs';
@@ -2536,7 +2536,9 @@ export function createWorkspace(container, adapter, options = {}) {
       field('내용',textarea('text',item.text,{ ...required,maxlength:12000,autofocus:Boolean(item.id) })),
       toggle('확인된 사실이면 채팅에도 공개',check('announce'))];
     const notes = investigatorNotes(state).slice().reverse();
-    const record = (item) => el('details', { class:'record','data-disclosure-id':item.id },el('summary', {}, `${noteLabels[item.kind]}${item.aiOff ? ' · AI가 안 봐요' : ''} · ${item.text.slice(0,70)}`),
+    const remembered = rememberedNoteIds(state);
+    const unseen = (item) => rememberedNoteKinds.includes(item.kind) && !remembered.has(item.id);
+    const record = (item) => el('details', { class:'record','data-disclosure-id':item.id },el('summary', {}, `${noteLabels[item.kind]}${unseen(item) ? ' · AI가 안 봐요' : ''} · ${item.text.slice(0,70)}`),
       el('p',{ class:'message-text' },item.text),row(
         button('기록 수정',() => messageDialog('조사 노트 수정','수정 저장',noteFields(item),(values) => saveNote(values,item.id)),{ 'aria-haspopup':'dialog' }),
         button('기록 삭제', () => {
@@ -2550,10 +2552,14 @@ export function createWorkspace(container, adapter, options = {}) {
   /* Which notes the AI remembers: facts, AI summaries, hypotheses and session summaries, newest first. An unticked
      note stays in the notebook but is left out of every AI turn until it is ticked again. */
   function aiNotePicker(notes) {
-    const shown = notes.filter((item) => ['fact','learned','hypothesis','summary'].includes(item.kind));
+    const shown = notes.filter((item) => rememberedNoteKinds.includes(item.kind));
     if (!shown.length) return null;
-    const kept = shown.filter((item) => !item.aiOff).length;
+    const limit = keepNotesLimit(state);
+    const remembered = rememberedNoteIds(state);
+    const kept = shown.filter((item) => remembered.has(item.id)).length;
+    // Picking by hand, remembering all or switching the rule off ends "keep the newest N"; the ticks decide again.
     const apply = (ids) => (next) => {
+      delete next.settings.keepNotes;
       for (const item of next.notes) if (shown.some((other) => other.id === item.id)) {
         if (ids === null || ids.has(item.id)) delete item.aiOff;
         else item.aiOff = true;
@@ -2562,23 +2568,29 @@ export function createWorkspace(container, adapter, options = {}) {
     // The form already runs inside run(), so it saves directly; the reset button goes through action().
     const saveNow = async (ids) => { await transact(apply(ids)); announce('AI가 기억할 조사 노트를 저장했어요.','ok'); };
     const boxes = shown.map((item) => {
-      const box = check('noteId',!item.aiOff);
+      const box = check('noteId',remembered.has(item.id));
       box.value = item.id;
       return el('label',{ class:'preset-section' },box,
         el('span',{ class:'preset-section-name' },item.text.slice(0,90),el('small',{},noteLabels[item.kind].split(' · ')[0])));
     });
-    // Quick picks so a long notebook is not unticked one by one: keep only the newest N, or clear every box.
-    const newest = input('keepNewest',keepNewestCount ?? (kept < shown.length ? kept : Math.min(20,shown.length)),{ ...numeric(1,shown.length),'aria-label':'기억할 최신 노트 수',class:'keep-newest',
+    // Keep the newest N: saved as a rule, so as notes keep coming the AI still remembers only the newest N.
+    const newest = input('keepNewest',keepNewestCount ?? (limit || (kept < shown.length ? kept : Math.min(20,shown.length))),{ ...numeric(1,999),'aria-label':'기억할 최신 노트 수',class:'keep-newest',
       oninput:(event) => { keepNewestCount = event.target.value; } });
     const keepNewest = () => {
-      const count = Math.max(1,Math.min(shown.length,Math.trunc(Number(newest.value)) || 1));
+      const count = Math.max(1,Math.min(999,Math.trunc(Number(newest.value)) || 1));
       keepNewestCount = null;
-      action(apply(new Set(shown.slice(0,count).map((item) => item.id))),`최신 노트 ${count}개만 AI가 기억해요.`)();
+      action((next) => { next.settings.keepNotes = count; },`새 노트가 생겨도 최신 노트 ${count}개만 AI가 기억해요.`)();
     };
+    // Switching the rule off keeps today's ticks, so nothing the AI remembers changes at that moment.
+    const stopKeeping = () => action((next) => apply(rememberedNoteIds(next))(next),'이제 체크한 노트만 AI가 기억해요.')();
     return el('details',{ class:'record','data-disclosure-id':'ai-note-picker' },
-      el('summary',{},`AI가 기억할 조사 노트 · ${kept}/${shown.length}개`),
-      note('맨 위가 최신이에요. 체크한 노트만 AI 답변에 보내요. 체크를 풀어도 노트는 지워지지 않아요. 세션 요약은 체크한 것 중 최근 5개까지 보내요.'),
-      el('div',{ class:'row picker-actions' },newest,button('최신 노트만 기억',keepNewest,{ disabled:!!running })),
+      el('summary',{},`AI가 기억할 조사 노트 · ${kept}/${shown.length}개${limit ? ` · 최신 ${limit}개 자동` : ''}`),
+      note(limit
+        ? `지금은 최신 노트 ${limit}개만 자동으로 기억해요. 새 노트가 생기면 가장 오래된 노트가 저절로 빠지고, 빠진 노트도 지워지지는 않아요. 직접 골라 저장하거나 전부 기억을 누르면 자동이 꺼져요.`
+        : '맨 위가 최신이에요. 체크한 노트만 AI 답변에 보내요. 체크를 풀어도 노트는 지워지지 않아요. 숫자를 적고 최신 노트만 계속 기억을 누르면, 노트가 늘어나도 그 개수만 기억해요.'),
+      note('세션 요약은 기억하는 것 중 최근 5개까지 보내요.'),
+      el('div',{ class:'row picker-actions' },newest,button(limit ? '개수 바꾸기' : '최신 노트만 계속 기억',keepNewest,{ disabled:!!running }),
+        limit ? button('자동 끄기',stopKeeping,{ disabled:!!running }) : null),
       pickerForm((values) => saveNow(new Set(values.getAll('noteId').map(String))),boxes,'고른 노트 저장',
         button('모두 해제',() => { for (const box of boxes) box.querySelector('input').checked = false; }),
         button('전부 기억',() => action(apply(null),'모든 조사 노트를 AI가 기억해요.')(),{ disabled:!!running || kept === shown.length })));
