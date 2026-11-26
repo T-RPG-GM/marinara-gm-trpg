@@ -1,0 +1,330 @@
+diff --git a/packages/server/src/routes/gallery.routes.ts b/packages/server/src/routes/gallery.routes.ts
+index c01e739c4..5efe412e7 100644
+--- a/packages/server/src/routes/gallery.routes.ts
++++ b/packages/server/src/routes/gallery.routes.ts
+@@ -11,10 +11,16 @@ import {
+   findImageStyleProfile,
+   parseChatImageGenerationRecord,
+   LOCAL_SIDECAR_CONNECTION_ID,
++  normalizeAgentPromptTemplateSelectionMap,
+   readImageAppearanceOverride,
++  resolveAgentPromptTemplate,
+   resolveGameSetupArtStylePrompt,
+   VIDEO_GENERATION_SETTINGS_KEY,
+   normalizeVideoGenerationUserSettings,
++  DEFAULT_NOVELAI_DEFAULTS,
++  NOVELAI_NOISE_SCHEDULE_OPTIONS,
++  NOVELAI_SAMPLER_OPTIONS,
++  type ImageGenRequest,
+ } from "@marinara-engine/shared";
+ import { createGalleryStorage } from "../services/storage/gallery.storage.js";
+ import { listSpriteCatalog } from "../services/sprites/sprite-catalog.js";
+@@ -38,7 +44,7 @@ import {
+   resolveConnectionImageDefaults,
+   resolveConnectionImageQuality,
+ } from "../services/image/image-generation-defaults.js";
+-import { loadImageGenerationUserSettings } from "../services/image/image-generation-settings.js";
++import { loadImageGenerationUserSettings, resolveIllustratorImageSize } from "../services/image/image-generation-settings.js";
+ import {
+   compileImagePrompt,
+   formatImageStylePromptGuidance,
+@@ -60,6 +66,8 @@ import {
+ } from "../services/image/gallery-file-lifecycle.js";
+ import { resolveImageConnectionFallback } from "../services/generation/media-connection-fallback.js";
+ import { resolveIllustratorPromptRuntime } from "../services/generation/illustrator-prompt-runtime.js";
++import { writeManualIllustratorPromptPlan } from "../services/generation/illustrator-manual-prompt-generation.js";
++import { getAgentFallbackPrompt, resolveEffectiveAgentSettings } from "../services/generation/agent-resolution.js";
+ import { resolveIllustratorImageConnectionId } from "../services/generation/illustrator-background-generation.js";
+ import { resolveConversationSelfieSystemPrompt } from "../services/conversation/selfie-prompt.js";
+ import { appendImagePromptInstructions } from "../services/generation/image-prompt-instructions.js";
+@@ -102,6 +110,8 @@ import {
+   toVideoReferenceImage,
+ } from "../services/video/chat-video-generation.js";
+ import {
++  illustratorPromptTemplateOwnsComposition,
++  mergeIllustratorNegativePrompt,
+   readPreferredCharacterReferenceImage,
+   readPreferredPersonaReferenceImage,
+ } from "../services/image/illustrator-references.js";
+@@ -172,11 +182,35 @@ class GallerySceneVideoRequestError extends Error {
+   }
+ }
+ 
++const novelAiOverridesSchema = z.object({
++  steps: z.number().int().min(1).max(150).optional(),
++  promptGuidance: z.number().min(0).max(30).optional(),
++  sampler: z.enum(NOVELAI_SAMPLER_OPTIONS.map(({ value }) => value)).optional(),
++  noiseSchedule: z.enum(NOVELAI_NOISE_SCHEDULE_OPTIONS.map(({ value }) => value)).optional(),
++}).strict();
++
++function novelAiRequestOptions(
++  imageDefaults: ImageGenRequest["imageDefaults"],
++  fallback: ImageGenRequest["fallback"],
++  overrides: z.infer<typeof novelAiOverridesSchema> | undefined,
++) {
++  if (!overrides) return { imageDefaults, fallback };
++  const apply = (profile: ImageGenRequest["imageDefaults"]) =>
++    profile?.service === "novelai"
++      ? { ...profile, novelai: { ...(profile.novelai ?? DEFAULT_NOVELAI_DEFAULTS), ...overrides } }
++      : profile;
++  return {
++    imageDefaults: apply(imageDefaults),
++    fallback: fallback ? { ...fallback, imageDefaults: apply(fallback.imageDefaults) } : undefined,
++  };
++}
++
+ const generateConversationSelfieSchema = z.object({
+   characterId: z.string().min(1),
+   context: z.string().max(2000).optional(),
+   promptOverride: z.string().trim().min(1).max(200_000).optional(),
+   negativePromptOverride: z.string().max(200_000).optional(),
++  novelAiOverrides: novelAiOverridesSchema.optional(),
+   previewOnly: z.boolean().optional().default(false),
+   queueImageGenerationRequests: z.boolean().optional().default(true),
+   debugMode: z.boolean().optional().default(false),
+@@ -213,9 +247,37 @@ const generateGalleryImageSchema = z.object({
+   mapsArtworkContext: mapsArtworkContextSchema.optional(),
+   promptOverride: z.string().trim().min(1).max(200_000).optional(),
+   negativePromptOverride: z.string().max(200_000).optional(),
++  novelAiOverrides: novelAiOverridesSchema.optional(),
++  /** CoC 7th: Image Appearance Override tags of the investigator/persona shown, appended word for word. */
++  appearances: z
++    .array(z.object({ name: z.string().trim().min(1).max(120), tags: z.string().trim().min(1).max(2_000) }))
++    .max(4)
++    .optional(),
+   debugMode: z.boolean().optional().default(false),
+ });
+ 
++/**
++ * Appends override tags as `Name's Appearance: tags` lines, the format Marinara's Illustrator uses,
++ * unless the prompt writer already copied them in.
++ */
++function withCoc7Appearances(
++  prompt: string,
++  appearances: Array<{ name: string; tags: string }> | undefined,
++  visibleNames: string[] | undefined,
++): string {
++  let shown = appearances ?? [];
++  // The prompt writer lists who is actually visible, so a person a scene only mentions ("띠니 is not home") stays out.
++  // Names match whole (a note in brackets aside), so 끄끼띠니 or 띠니의 어머니 never count as 띠니.
++  if (visibleNames?.length) {
++    const bare = (name: string) => name.replace(/[(（[].*?[)）\]]/gu, "").trim().toLowerCase();
++    const visible = new Set(visibleNames.map(bare));
++    shown = shown.filter(({ name }) => visible.has(bare(name)));
++  }
++  const missing = shown.filter(({ tags }) => !prompt.includes(tags));
++  if (!missing.length) return prompt;
++  return `${prompt}\n\n${missing.map(({ name, tags }) => `${name}'s Appearance: ${tags}`).join("\n")}`;
++}
++
+ /** Re-send an existing image's final request, possibly edited (#7767). */
+ const regenerateGalleryImageSchema = z.object({
+   prompt: z.string().trim().min(1).max(200_000),
+@@ -375,7 +437,8 @@ async function resolveGalleryImageConnection(
+     logger.warn(err, "[gallery/generate-image] Failed to read Illustrator settings");
+     return null;
+   });
+-  const configuredId = resolveIllustratorImageConnectionId(
++  const chatIllustratorId = metadata.gameVariant === "coc7-keeper" && readTrimmedString(metadata.illustratorImageConnectionId);
++  const configuredId = chatIllustratorId || resolveIllustratorImageConnectionId(
+     chatMode,
+     metadata,
+     parseJsonRecord(illustrator?.settings).imageConnectionId,
+@@ -391,7 +454,7 @@ async function resolveGalleryImageConnection(
+     );
+   }
+   connection ??= await connections.getDefaultForImageGeneration();
+-  return { connection, connections };
++  return { connection, connections, illustrator };
+ }
+ 
+ function readStringArray(value: unknown): string[] {
+@@ -561,13 +624,15 @@ export async function galleryRoutes(app: FastifyInstance) {
+     }
+ 
+     const metadata = parseChatMetadata(chat.metadata);
+-    if (chat.mode === "game" && metadata.enableSpriteGeneration !== true) {
++    const isCoc7 = chat.mode === "game" && metadata.gameVariant === "coc7-keeper";
++    const usesGameMapIllustrator = chat.mode === "game" && !isCoc7;
++    if (usesGameMapIllustrator && metadata.enableSpriteGeneration !== true) {
+       throw new GalleryImageRequestError(400, "Enable Game Illustrator in Chat Settings before creating map artwork.");
+     }
+-    if (chat.mode === "game" && !readTrimmedString(metadata.gameImageConnectionId)) {
++    if (usesGameMapIllustrator && !readTrimmedString(metadata.gameImageConnectionId)) {
+       throw new GalleryImageRequestError(400, "Choose the Game Illustrator image connection in Chat Settings first.");
+     }
+-    const { connection: imageConnection, connections } = await resolveGalleryImageConnection(app, chat.mode, metadata);
++    const { connection: imageConnection, connections, illustrator } = await resolveGalleryImageConnection(app, chat.mode, metadata);
+     if (!imageConnection) {
+       throw new GalleryImageRequestError(
+         400,
+@@ -601,6 +666,10 @@ export async function galleryRoutes(app: FastifyInstance) {
+ 
+     return {
+       chat,
++      isCoc7,
++      metadata,
++      connections,
++      illustrator,
+       imageConnection,
+       imageSettings,
+       imageDefaults,
+@@ -621,6 +690,89 @@ export async function galleryRoutes(app: FastifyInstance) {
+     };
+   }
+ 
++  async function compileCoc7Illustration(
++    context: Awaited<ReturnType<typeof resolveGalleryImageGenerationContext>>,
++    input: {
++      prompt: string;
++      promptOverride?: string;
++      negativePromptOverride?: string;
++      appearances?: Array<{ name: string; tags: string }>;
++    },
++    signal?: AbortSignal,
++  ) {
++    const { chat, metadata, illustrator, connections, imageConnection, imageSettings, styleProfileId, imageDefaults } = context;
++    const settings = resolveEffectiveAgentSettings({ agentType: "illustrator", settings: illustrator?.settings, chatMetadata: metadata });
++    const promptTemplate = resolveAgentPromptTemplate({
++      promptTemplate: illustrator?.promptTemplate,
++      fallbackPromptTemplate: getAgentFallbackPrompt("illustrator", settings),
++      settings,
++      selectedPromptTemplateId: normalizeAgentPromptTemplateSelectionMap(metadata.agentPromptTemplateIds).illustrator,
++    });
++    const promptConnectionId = readTrimmedString(illustrator?.connectionId) || chat.connectionId || (await connections.getDefault())?.id || null;
++    const usePromptWriter = !input.promptOverride && (promptConnectionId || readTrimmedString(metadata.illustratorPromptConnectionId));
++    const styleInstruction = [context.styleProfile.styleText, context.artStyle].filter(Boolean).join("\n");
++    let plan: Awaited<ReturnType<typeof writeManualIllustratorPromptPlan>>["plan"] | undefined;
++    if (usePromptWriter) {
++      const runtime = await resolveIllustratorPromptRuntime({
++        chatMetadata: metadata,
++        defaultConnection: null,
++        defaultConnectionId: promptConnectionId,
++        connections,
++        resolveBaseUrl,
++      });
++      ({ plan } = await writeManualIllustratorPromptPlan({
++        illustratorAgent: {
++          ...runtime,
++          id: illustrator?.id ?? "builtin:illustrator",
++          type: "illustrator",
++          name: illustrator?.name ?? "Illustrator",
++          phase: "post_generation",
++          isCustomAgent: false,
++          promptTemplate,
++          settings,
++        },
++        context: {
++          chatId: chat.id,
++          chatMode: chat.mode,
++          recentMessages: [{ role: "user", content: input.prompt }],
++          mainResponse: null,
++          gameState: null,
++          characters: [],
++          persona: null,
++          memory: {},
++          chatSummary: null,
++          writableLorebookIds: null,
++        },
++        styleInstruction,
++        imagePromptInstructions: imageConnection.imagePromptInstructions ?? undefined,
++        signal,
++        debugLog: context.debugLog,
++      }));
++    }
++
++    const prompt = plan ? removeCopiedPromptGuidance(plan.prompt, [styleInstruction, imageConnection.imagePromptInstructions]) : input.prompt;
++    const compiled = compileImagePrompt({
++      kind: "illustration",
++      prompt: prompt || plan?.prompt || input.prompt,
++      negativePrompt: plan?.negativePrompt,
++      generatedStyle: plan?.style,
++      styleProfiles: imageSettings.styleProfiles,
++      styleProfileId,
++      imageDefaults,
++      omitProfileStyleText: Boolean(plan && styleInstruction),
++      omitProfileSubjectTags: illustratorPromptTemplateOwnsComposition(promptTemplate),
++    });
++    const generatedPrompt = withCoc7Appearances(compiled.prompt, input.appearances, plan?.characters);
++    const reviewed = resolveReviewedImagePromptSubmission({
++      generatedPrompt,
++      generatedNegativePrompt: mergeIllustratorNegativePrompt(generatedPrompt, compiled.negativePrompt, plan?.negativePrompt ?? "", imageConnection),
++      promptOverride: input.promptOverride,
++      negativePromptOverride: input.negativePromptOverride,
++    });
++    const size = resolveIllustratorImageSize(imageSettings.game, plan?.aspectRatio);
++    return { ...reviewed, ...resolveImagePromptReviewSize({ connection: imageConnection, prompt: reviewed.prompt, ...size, imageDefaults }) };
++  }
++
+   async function compileGalleryImageRequest(
+     context: Awaited<ReturnType<typeof resolveGalleryImageGenerationContext>>,
+     input: {
+@@ -629,8 +781,11 @@ export async function galleryRoutes(app: FastifyInstance) {
+       mapsArtworkContext?: z.infer<typeof mapsArtworkContextSchema>;
+       promptOverride?: string;
+       negativePromptOverride?: string;
++      appearances?: Array<{ name: string; tags: string }>;
+     },
++    signal?: AbortSignal,
+   ) {
++    if (context.isCoc7) return compileCoc7Illustration(context, input, signal);
+     const compiled = await buildBackgroundProviderPrompt({
+       chatId: context.chat.id,
+       locationSlug: input.title?.trim() || "Gallery image",
+@@ -1847,11 +2002,10 @@ export async function galleryRoutes(app: FastifyInstance) {
+             height,
+             imageEndpointId: imageConn.imageEndpointId || undefined,
+             comfyWorkflow: imageConn.comfyuiWorkflow || undefined,
+-            imageDefaults,
++            ...novelAiRequestOptions(imageDefaults, imageFallback, input.novelAiOverrides),
+             quality: resolveConnectionImageQuality(imageConn),
+             referenceImages,
+             signal: selfieAbortSignal,
+-            fallback: imageFallback,
+           }),
+         onVariantError: (error, index) =>
+           logger.warn(error, "[gallery/selfie] Variant %d failed for chat %s", index + 1, chatId),
+@@ -1921,7 +2075,7 @@ export async function galleryRoutes(app: FastifyInstance) {
+           const compiled = await compileGalleryImageRequest(context, item);
+           return {
+             id: item.id,
+-            kind: "background" as const,
++            kind: context.isCoc7 ? "illustration" : "background",
+             title: item.title,
+             sourcePrompt: item.prompt,
+             prompt: compiled.prompt,
+@@ -1971,11 +2125,12 @@ export async function galleryRoutes(app: FastifyInstance) {
+     if (!isValidChatId(chatId)) return reply.status(400).send({ error: "Invalid chatId" });
+ 
+     const input = generateGalleryImageSchema.parse(req.body);
++    const signal = createResponseAbortSignal(reply, SCENE_VIDEO_GENERATION_TIMEOUT_MS, "Gallery image generation");
+     let context: Awaited<ReturnType<typeof resolveGalleryImageGenerationContext>>;
+     let compiledPrompt: Awaited<ReturnType<typeof compileGalleryImageRequest>>;
+     try {
+       context = await resolveGalleryImageGenerationContext(chatId, input.debugMode);
+-      compiledPrompt = await compileGalleryImageRequest(context, input);
++      compiledPrompt = await compileGalleryImageRequest(context, input, signal);
+     } catch (err) {
+       if (err instanceof GalleryImageRequestError) {
+         return reply.status(err.statusCode).send({ error: err.message });
+@@ -1984,8 +2139,6 @@ export async function galleryRoutes(app: FastifyInstance) {
+       return reply.status(500).send({ error: "Gallery image prompt compilation failed" });
+     }
+ 
+-    const signal = createResponseAbortSignal(reply, SCENE_VIDEO_GENERATION_TIMEOUT_MS, "Gallery image generation");
+-
+     context.debugLog("[debug/gallery/generate-image] prompt:\n%s", compiledPrompt.prompt);
+     if (compiledPrompt.negativePrompt) {
+       context.debugLog("[debug/gallery/generate-image] negative prompt:\n%s", compiledPrompt.negativePrompt);
+@@ -2007,10 +2160,9 @@ export async function galleryRoutes(app: FastifyInstance) {
+           height: compiledPrompt.height,
+           imageEndpointId: context.imageConnection.imageEndpointId || undefined,
+           comfyWorkflow: context.imageConnection.comfyuiWorkflow || undefined,
+-          imageDefaults: context.imageDefaults,
++          ...novelAiRequestOptions(context.imageDefaults, context.imageFallback, input.novelAiOverrides),
+           quality: resolveConnectionImageQuality(context.imageConnection),
+           signal,
+-          fallback: context.imageFallback,
+         },
+       );
+       const filePath = saveImageToDisk(chatId, generated.base64, generated.ext);

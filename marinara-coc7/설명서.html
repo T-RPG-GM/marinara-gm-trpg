@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoC 7th TRPG 설명서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a keeper's case file — a contents rail on wide screens beside one readable column of sections. */
+:root {
+  --paper: #f4f6f4;
+  --sheet: #ffffff;
+  --ink: #1b2220;
+  --muted: #56625d;
+  --rule: #dce2de;
+  --accent: #2c5d55;
+  --accent-soft: #e2edea;
+  --seal: #9a3a31;
+  --seal-soft: #f6e6e3;
+  --amber: #8a5a12;
+  --amber-soft: #f6edda;
+  --code: #ecf0ed;
+  --font-display: "Gowun Batang", "Nanum Myeongjo", "Batang", serif;
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111614; --sheet: #182019; --ink: #e5ebe7; --muted: #9ba7a1; --rule: #2a3430;
+    --accent: #85c2b4; --accent-soft: #1d2e2a; --seal: #e3907f; --seal-soft: #331f1c;
+    --amber: #e2b866; --amber-soft: #302613; --code: #1f2824;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111614; --sheet: #182019; --ink: #e5ebe7; --muted: #9ba7a1; --rule: #2a3430;
+  --accent: #85c2b4; --accent-soft: #1d2e2a; --seal: #e3907f; --seal-soft: #331f1c;
+  --amber: #e2b866; --amber-soft: #302613; --code: #1f2824;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--paper); color: var(--ink);
+  font: 400 16px/1.75 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+a { color: var(--accent); text-underline-offset: .2em; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code { font-family: var(--font-mono); font-size: .86em; background: var(--code); padding: .08em .4em; border-radius: 5px; white-space: nowrap; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.3; margin: 0; }
+p { margin: 0; }
+ul { margin: 0; padding-left: 1.15rem; display: grid; gap: .4rem; }
+li::marker { color: var(--accent); }
+
+.page { max-width: 72rem; margin: 0 auto; padding-block: 2.5rem 4rem; display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 3rem; }
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1.5rem); align-self: start; display: grid; gap: .15rem; font-size: .88rem; }
+.toc strong { font-size: .72rem; letter-spacing: .14em; color: var(--muted); margin-bottom: .4rem; }
+.toc a { color: var(--muted); text-decoration: none; padding: .28rem .6rem; border-left: 2px solid var(--rule); }
+.toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+main { display: grid; gap: 3.5rem; min-width: 0; }
+
+.hero { display: grid; gap: 1rem; padding-bottom: 2rem; border-bottom: 1px solid var(--rule); }
+.eyebrow { font-size: .76rem; letter-spacing: .16em; color: var(--accent); font-weight: 700; }
+.hero h1 { font-size: clamp(2rem, 5vw, 3.1rem); }
+.lead { font-size: 1.08rem; color: var(--muted); max-width: 40rem; }
+.roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .5rem; }
+.role { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .25rem; align-content: start; }
+.role > strong { font-family: var(--font-display); font-size: 1.1rem; }
+.role > span { font-size: .9rem; color: var(--muted); }
+
+section { display: grid; gap: 1.1rem; scroll-margin-top: 1.5rem; }
+section > h2 { font-size: 1.65rem; }
+.intro { color: var(--muted); max-width: 44rem; }
+h3 { font-size: 1.12rem; }
+
+/* Numbered steps: the order is real, so the numbers carry meaning. */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; counter-reset: step; }
+.steps > li { counter-increment: step; display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: .9rem; align-items: start; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 1rem 1.15rem; }
+.steps > li::before { content: counter(step); font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+.step-body { display: grid; gap: .45rem; min-width: 0; }
+.step-title { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.02rem; }
+.step-body p, .step-body li { font-size: .94rem; color: var(--muted); }
+.step-body p strong, .step-body li strong { color: var(--ink); }
+.where { font-size: .84rem; color: var(--accent); font-weight: 500; }
+
+.tag { font-size: .7rem; font-weight: 700; letter-spacing: .04em; padding: .1rem .55rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.must { background: var(--seal-soft); color: var(--seal); }
+.tag.opt { background: var(--code); color: var(--muted); }
+.tag.cost { background: var(--amber-soft); color: var(--amber); }
+
+.checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .6rem; }
+.check { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: .85rem 1rem; display: grid; gap: .25rem; align-content: start; }
+.check > div { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; font-weight: 700; }
+.check p { font-size: .88rem; color: var(--muted); }
+
+.layout-mock { display: grid; grid-template-columns: 1fr 1.7fr 1.15fr; border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; background: var(--sheet); }
+.zone { padding: 1.1rem 1rem; display: grid; gap: .45rem; align-content: start; min-width: 0; }
+.zone + .zone { border-left: 1px solid var(--rule); }
+.zone h3 { font-size: 1.02rem; }
+.zone p { font-size: .88rem; color: var(--muted); }
+.zone .tip { font-size: .82rem; color: var(--accent); font-weight: 500; }
+.zone.chat { background: var(--paper); }
+.bubble { font-size: .8rem; border-radius: 8px; padding: .35rem .6rem; background: var(--sheet); border: 1px solid var(--rule); color: var(--muted); }
+.bubble.scene { text-align: center; font-style: italic; }
+.bubble.inv { justify-self: start; max-width: 85%; }
+.bubble.roll { border-color: var(--accent); color: var(--accent); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--sheet); }
+table { width: 100%; border-collapse: collapse; font-size: .93rem; min-width: 34rem; }
+th, td { text-align: left; padding: .7rem 1rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: .76rem; letter-spacing: .1em; color: var(--muted); font-weight: 700; background: var(--paper); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { white-space: nowrap; }
+
+.scale { display: grid; gap: .8rem; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 1.2rem; }
+.scale-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; font-size: .9rem; color: var(--muted); }
+.bar { display: flex; height: 1.6rem; border-radius: 6px; overflow: hidden; }
+.bar span { display: block; height: 100%; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); gap: .5rem 1rem; font-size: .88rem; }
+.legend div { display: grid; grid-template-columns: .8rem minmax(0, 1fr); gap: .5rem; align-items: baseline; }
+.legend i { width: .8rem; height: .8rem; border-radius: 3px; display: block; transform: translateY(.1rem); }
+.legend span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.c-crit { background: #3f8f6e; } .c-ext { background: #5aa58a; } .c-hard { background: #8cc3ae; }
+.c-reg { background: #c4dfd4; } .c-fail { background: #cfd4d1; } .c-fum { background: #b5473c; }
+
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 1.1rem 1.2rem; display: grid; gap: .6rem; align-content: start; min-width: 0; }
+.panel > p { font-size: .92rem; color: var(--muted); }
+.panel li { font-size: .93rem; }
+.panel li span { color: var(--muted); }
+
+/* Tab guide: one card per side-panel tab, every section inside it listed. */
+.tabs-guide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.tab-card { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 1.15rem 1.25rem; display: grid; gap: .65rem; align-content: start; min-width: 0; }
+.tab-card header { display: grid; gap: .2rem; padding-bottom: .55rem; border-bottom: 1px solid var(--rule); }
+.tab-card header span { font-size: .7rem; letter-spacing: .14em; color: var(--accent); font-weight: 700; }
+.tab-card header h3 { font-size: 1.2rem; }
+.tab-card header p { font-size: .9rem; color: var(--muted); }
+.tab-card dl { margin: 0; display: grid; gap: .65rem; }
+.tab-card dt { font-weight: 700; font-size: .93rem; }
+.tab-card dd { margin: .1rem 0 0; font-size: .9rem; color: var(--muted); }
+
+.note { display: grid; gap: .3rem; padding: 1rem 1.2rem; border-radius: var(--radius); background: var(--accent-soft); font-size: .93rem; }
+.note.cost { background: var(--amber-soft); }
+
+.faq { display: grid; gap: .6rem; }
+details { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: .2rem 1.1rem; }
+summary { cursor: pointer; font-weight: 700; padding: .75rem 0; }
+details[open] summary { border-bottom: 1px solid var(--rule); margin-bottom: .7rem; }
+details > div { display: grid; gap: .5rem; padding-bottom: .9rem; font-size: .94rem; color: var(--muted); }
+
+footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--rule); padding-top: 1.5rem; }
+
+@media (max-width: 960px) { .tabs-guide { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 2rem; padding-block: 1.5rem 3rem; }
+  .toc { position: static; display: flex; flex-wrap: wrap; gap: .35rem; }
+  .toc strong { width: 100%; margin-bottom: 0; }
+  .toc a { border: 1px solid var(--rule); border-radius: 999px; padding: .2rem .7rem; background: var(--sheet); }
+}
+@media (max-width: 640px) {
+  .roles, .pair { grid-template-columns: minmax(0, 1fr); }
+  .layout-mock { grid-template-columns: minmax(0, 1fr); }
+  .zone + .zone { border-left: 0; border-top: 1px solid var(--rule); }
+  .steps > li { grid-template-columns: minmax(0, 1fr); gap: .6rem; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <nav class="toc" aria-label="목차">
+    <strong>목차</strong>
+    <a href="#ready">준비물</a>
+    <a href="#setup">처음 설정 순서</a>
+    <a href="#screen">화면 구성</a>
+    <a href="#commands">입력 명령어</a>
+    <a href="#checks">판정과 주사위</a>
+    <a href="#tabs">오른쪽 패널 탭</a>
+    <a href="#art">삽화</a>
+    <a href="#memory">기억 서재</a>
+    <a href="#tokens">토큰 아끼기</a>
+    <a href="#messages">메시지 다루기</a>
+    <a href="#install">설치와 업데이트</a>
+    <a href="#trouble">문제가 생기면</a>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <span class="eyebrow">MARINARA ENGINE · GM(게임) 모드</span>
+      <h1>CoC 7th TRPG 설명서</h1>
+      <p class="lead">크툴루의 부름 7판을 Marinara에서 혼자 즐기는 방법이에요. 내가 키퍼가 되어 장면을 열고, AI가 조사자 한 명을 맡아 행동하고 말해요. 주사위와 시트, 기록은 화면이 알아서 챙겨요.</p>
+      <div class="roles">
+        <div class="role"><strong>나 · 키퍼</strong><span>장면을 묘사하고 NPC를 연기하고 판정을 요청해요.</span></div>
+        <div class="role"><strong>AI · 조사자</strong><span>시트대로 행동하고 대사하고, 필요하면 판정을 굴려요.</span></div>
+        <div class="role"><strong>화면 · 기록관</strong><span>주사위, HP·SAN, 노트, 삽화, 기억을 정리해요.</span></div>
+      </div>
+    </header>
+
+    <section id="ready">
+      <h2>준비물</h2>
+      <p class="intro">CoC 화면을 열기 전에 Marinara에 아래 것들이 있는지 확인해요. 필수만 있어도 시작할 수 있어요.</p>
+      <div class="checklist">
+        <div class="check"><div>텍스트 모델 연결 <span class="tag must">필수</span></div><p>AI 조사자가 답할 때 쓰는 모델이에요. Marinara 연결 설정에서 하나 만들어 두세요.</p></div>
+        <div class="check"><div>조사자 봇카드 <span class="tag">권장</span></div><p>AI가 연기할 조사자의 캐릭터 카드예요. 없으면 시트에 직접 적어도 돼요.</p></div>
+        <div class="check"><div>내 페르소나 <span class="tag opt">선택</span></div><p>내가 맡는 인물이에요. 연결하면 내 대사와 판정이 이 인물 이름으로 나가요.</p></div>
+        <div class="check"><div>이미지 생성 연결 <span class="tag opt">선택</span></div><p>삽화를 그릴 때 써요. 예: NovelAI.</p></div>
+        <div class="check"><div>기억 서재 확장 <span class="tag opt">선택</span></div><p>긴 이야기를 정리해 두고 AI가 기억하게 해요.</p></div>
+      </div>
+    </section>
+
+    <section id="setup">
+      <h2>처음 설정 순서</h2>
+      <p class="intro">새 게임을 만든 뒤 위에서부터 차례로 하면 돼요. 선택 단계는 건너뛰어도 플레이할 수 있어요.</p>
+      <ol class="steps">
+        <li>
+          <div class="step-body">
+            <div class="step-title">새 게임 만들기 <span class="tag must">필수</span></div>
+            <p><strong>새 대화</strong>를 누르고 <strong>GM(게임)</strong>에서 <strong>CoC 7th TRPG</strong>를 고르면 CoC 화면이 열려요.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">AI 조사자 연결 <span class="tag must">필수</span></div>
+            <span class="where">오른쪽 패널 → 세션·설정 → AI 조사자 설정</span>
+            <ul>
+              <li><strong>조사자 봇카드</strong> · AI가 연기할 캐릭터를 골라요.</li>
+              <li><strong>텍스트 모델 연결</strong> · AI 답변에 쓸 모델이에요. 비워 두면 채팅 연결이나 기본 연결을 써요.</li>
+              <li><strong>프롬프트 프리셋</strong> · 문체를 정하는 프리셋이에요. 비워 두면 채팅 프리셋을 따라요.</li>
+              <li><strong>별도 이미지 분석 모델</strong> <span class="tag opt">선택</span> · 핸드아웃 사진의 설명을 제안할 때 써요. 이미지를 볼 수 있는 모델이어야 해요.</li>
+              <li><strong>삽화 프롬프트 모델</strong> <span class="tag opt">선택</span> · 삽화용 태그를 쓰는 모델이에요. 비워 두면 이미지 분석 모델을 따라가요.</li>
+            </ul>
+            <p>다 고르면 <strong>연결 저장</strong>을 눌러요.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">프리셋에서 보낼 부분 정하기 <span class="tag">권장</span></div>
+            <span class="where">같은 화면, 프리셋 이름 아래</span>
+            <p><strong>자동으로 (문체만)</strong>이 기본이에요. 프리셋의 문체 부분과 <code>{{기억}}</code>만 보내고, 역할·상태창처럼 CoC 규칙과 겹치는 부분은 빼요. 토큰이 크게 줄어요. 필요하면 부분을 직접 고르거나 <strong>전부 보내기</strong>를 눌러요.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">내 페르소나 연결 <span class="tag opt">선택</span></div>
+            <span class="where">세션·설정 → 플레이어 페르소나, 그다음 페르소나 시트 탭</span>
+            <p><strong>Marinara 페르소나</strong>를 고르고 <strong>페르소나 저장</strong>을 눌러요. 내 인물도 판정을 굴리게 하려면 <strong>페르소나 시트</strong> 탭에서 <strong>페르소나 시트 만들기</strong>를 눌러 시트를 만들어요. <code>/check</code>는 기본으로 이 시트로 굴려요.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">조사자 시트 완성 <span class="tag must">필수</span></div>
+            <span class="where">조사자 시트 탭</span>
+            <ul>
+              <li><strong>봇카드 불러오기</strong> · 카드에 적힌 수치를 그대로 가져와요.</li>
+              <li><strong>능력치 자동 적용</strong> <span class="tag cost">AI 호출</span> · AI가 카드 내용을 보고 능력치, 직업, 관심 기능을 채워요. 직접 적어도 돼요.</li>
+              <li><strong>연령 보정 · 생성 확정</strong> · 나이에 따른 보정과 포인트를 확인하고 <strong>생성 확정</strong>을 눌러요. 확정하면 <strong>캐릭터 시트 보기</strong>로 인쇄된 시트처럼 볼 수 있어요.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">왼쪽 사진 정하기 <span class="tag opt">선택</span></div>
+            <span class="where">조사자 시트 탭 → 조사자 프로필, 삽화 탭</span>
+            <p>봇카드 사진이 기본으로 나와요. 다른 사진을 쓰려면 <strong>프로필 이미지</strong>를 올리고 <strong>이미지 적용</strong>을 눌러요. 보이는 부분은 삽화 탭의 <strong>왼쪽 사진 위치</strong>에서 가로·세로로 옮겨요.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">게임 규칙 정하기 <span class="tag">권장</span></div>
+            <span class="where">세션·설정 → 게임 설정</span>
+            <ul>
+              <li><strong>키퍼 입력 후 자동 응답</strong> · 켜면 내가 보낼 때마다 AI가 바로 답해요.</li>
+              <li><strong>판정 방식</strong> · 자동, 승인 후, 직접, 비공개 중에서 골라요. <a href="#checks">판정과 주사위</a>에서 자세히 설명해요.</li>
+              <li><strong>행운 소비 허용</strong> · 실패한 판정을 행운으로 바꾸는 선택 규칙이에요.</li>
+              <li><strong>응답 모델에 공개 이미지 첨부</strong> · 모델이 이미지를 볼 수 있을 때만 켜요.</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">기억 서재 켜기 <span class="tag opt">선택</span></div>
+            <span class="where">기억 서재 탭 → 이 게임 방을 기억 서재로</span>
+            <p>기억 서재 확장이 있으면 켜 두세요. <strong>AI 답변마다 이어서 정리</strong>도 켜 두면 따로 신경 쓸 일이 없어요. 프리셋에 <code>{{기억}}</code>이 있어야 정리한 기억이 들어가요.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-body">
+            <div class="step-title">첫 장면 열기</div>
+            <p>입력창에 <code>/desc 비 내리는 아컴의 골목. 낡은 서점 문이 반쯤 열려 있다.</code>처럼 장면을 쓰고 보낸 뒤 <strong>AI 답변</strong>을 눌러요. 이제 조사자가 움직이기 시작해요.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section id="screen">
+      <h2>화면 구성</h2>
+      <p class="intro">넓은 화면에서는 세 칸으로 나뉘어요. 폰처럼 좁은 화면에서는 위쪽 <strong>패널 보기 / 채팅 보기</strong> 버튼으로 바꿔 봐요.</p>
+      <div class="layout-mock" role="img" aria-label="왼쪽 조사자 사진, 가운데 채팅, 오른쪽 캠페인 패널로 나뉜 화면">
+        <div class="zone">
+          <h3>조사자 사진</h3>
+          <p>조사자 사진과 HP·SAN이 보여요. 사진을 누르면 크게 볼 수 있어요.</p>
+          <span class="tip">오른쪽 경계선을 끌면 너비가 바뀌고, 두 번 누르면 원래대로 돌아가요.</span>
+        </div>
+        <div class="zone chat">
+          <h3>채팅</h3>
+          <div class="bubble scene">비 내리는 아컴의 골목…</div>
+          <div class="bubble inv">조사자: 서점 안을 살펴본다.</div>
+          <div class="bubble roll">관찰력 45 → 23 · 어려운 성공</div>
+          <span class="tip">장면, 대사, 판정, 삽화가 순서대로 쌓여요. 맨 위에 토큰 사용량이 보여요.</span>
+        </div>
+        <div class="zone">
+          <h3>캠페인 패널</h3>
+          <p>시트, 노트, NPC, 삽화, 설정 같은 13개 탭이 있어요.</p>
+          <span class="tip">왼쪽 가장자리의 › 로 접고, ‹ 로 다시 펼쳐요.</span>
+        </div>
+      </div>
+      <p class="intro">사진 칸 너비와 패널을 접었는지는 브라우저가 기억해서, 새로고침해도 그대로예요.</p>
+    </section>
+
+    <section id="commands">
+      <h2>입력 명령어</h2>
+      <p class="intro">입력창에 그냥 쓰면 키퍼의 말이 되고, 앞에 명령어를 붙이면 역할이 바뀌어요.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>명령어</th><th>하는 일</th><th>예시</th></tr></thead>
+          <tbody>
+            <tr><td><code>/desc</code></td><td>장면 묘사. 채팅에 가운데 정렬로 보여요.</td><td><code>/desc 지하실 문이 삐걱 열린다.</code></td></tr>
+            <tr><td><code>/as</code></td><td>NPC로 말하기. 이름에 띄어쓰기가 있으면 따옴표로 감싸요.</td><td><code>/as "서점 주인" 그 책은 팔 수 없소.</code></td></tr>
+            <tr><td><code>/em</code></td><td>행동 묘사. 페르소나를 연결했으면 페르소나의 행동이 돼요.</td><td><code>/em 조심스럽게 손전등을 켠다.</code></td></tr>
+            <tr><td><code>/check</code></td><td>기능 판정. 아래 <a href="#checks">판정과 주사위</a>에서 자세히 설명해요.</td><td><code>/check 관찰력 | hard</code></td></tr>
+            <tr><td><code>/roll</code></td><td>모두에게 보이는 주사위.</td><td><code>/roll 1d6+1</code></td></tr>
+            <tr><td><code>/gmroll</code></td><td>키퍼만 보는 비공개 주사위.</td><td><code>/gmroll 1d100</code></td></tr>
+            <tr><td><code>/toai</code></td><td>다음 AI 답변에만 전하는 지시. 채팅에는 안 보여요.</td><td><code>/toai 조사자는 아직 지하실을 무서워한다.</code></td></tr>
+            <tr><td><code>/w</code></td><td>키퍼만 보는 메모. 키퍼 기록 탭에 남아요.</td><td><code>/w 3장에서 단서 공개 예정</code></td></tr>
+            <tr><td><code>#이름</code></td><td>저장한 매크로 실행. <code>%{이름}</code>도 같아요.</td><td><code>#관찰</code></td></tr>
+            <tr><td><code>@{…}</code></td><td>시트 값 불러오기.</td><td><code>@{관찰력}</code></td></tr>
+            <tr><td><code>?{…}</code> <code>[[…]]</code></td><td>매크로 안에서 선택지를 묻거나 주사위 식을 계산해요.</td><td><code>?{난이도|보통,regular|어려움,hard}</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="intro">이 목록은 <strong>매크로</strong> 탭의 <strong>명령어 사용법</strong>에서도 볼 수 있어요.</p>
+    </section>
+
+    <section id="checks">
+      <h2>판정과 주사위</h2>
+      <p class="intro"><code>/check 기능명</code>은 기본으로 내 페르소나 시트로 굴려요. 조사자 시트로 굴리려면 <code>/check pc 기능명</code>처럼 앞에 <code>pc</code>나 조사자 이름을 붙여요. 뒤에 <code>|</code>로 난이도와 보너스·페널티를 더할 수 있어요.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>쓰는 법</th><th>뜻</th></tr></thead>
+          <tbody>
+            <tr><td><code>/check 관찰력</code></td><td>일반 난이도. 기준치 이하면 성공.</td></tr>
+            <tr><td><code>/check 관찰력 | hard</code></td><td>어려움. 기준치의 1/2 이하여야 성공.</td></tr>
+            <tr><td><code>/check 관찰력 | extreme</code></td><td>극단. 기준치의 1/5 이하여야 성공.</td></tr>
+            <tr><td><code>/check 관찰력 | hard | 1</code></td><td>보너스 주사위 1개. <code>-1</code>은 페널티 주사위이고, -2부터 2까지 써요.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="scale" aria-label="기준치 60일 때 결과 구간">
+        <div class="scale-head"><strong>예시 · 기준치 60일 때 1d100 결과</strong><span>왼쪽일수록 좋은 결과</span></div>
+        <div class="bar" aria-hidden="true">
+          <span class="c-crit" style="width:1%"></span><span class="c-ext" style="width:11%"></span><span class="c-hard" style="width:18%"></span><span class="c-reg" style="width:30%"></span><span class="c-fail" style="width:39%"></span><span class="c-fum" style="width:1%"></span>
+        </div>
+        <div class="legend">
+          <div><i class="c-crit"></i><p><strong>대성공</strong> <span>01</span></p></div>
+          <div><i class="c-ext"></i><p><strong>극단적 성공</strong> <span>02–12</span></p></div>
+          <div><i class="c-hard"></i><p><strong>어려운 성공</strong> <span>13–30</span></p></div>
+          <div><i class="c-reg"></i><p><strong>일반 성공</strong> <span>31–60</span></p></div>
+          <div><i class="c-fail"></i><p><strong>실패</strong> <span>61–99</span></p></div>
+          <div><i class="c-fum"></i><p><strong>대실패</strong> <span>100</span></p></div>
+        </div>
+        <p class="intro">기준치가 50 미만이면 96부터 100까지 모두 대실패예요.</p>
+      </div>
+      <div class="pair">
+        <div class="panel">
+          <h3>판정 방식</h3>
+          <p>세션·설정 → 게임 설정에서 골라요.</p>
+          <ul>
+            <li><strong>키퍼 요청 직후 자동 굴림</strong> · 판정을 요청하면 바로 굴려요.</li>
+            <li><strong>키퍼 승인 후 굴림</strong> · AI가 요청한 판정을 내가 허락해야 굴려요.</li>
+            <li><strong>키퍼가 직접 굴림 버튼 사용</strong> · 대기 중인 주사위를 내가 눌러서 굴려요.</li>
+            <li><strong>키퍼 비공개 굴림</strong> · 결과를 키퍼만 봐요.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>행운과 강행</h3>
+          <ul>
+            <li><strong>행운 소비</strong> · 설정에서 켜면, 실패한 판정을 행운을 써서 성공으로 바꿀 수 있어요. 대성공·대실패·강행 판정과 이성·행운 판정에는 쓸 수 없어요.</li>
+            <li><strong>강행</strong> · 실패한 판정을 한 번 더 굴려요. 판정 카드에 "강행"이 표시돼요.</li>
+            <li><strong>키퍼 수정</strong> · 키퍼가 결과를 고치면 카드에 표시가 남아요.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="tabs">
+      <h2>오른쪽 패널 탭</h2>
+      <p class="intro">탭마다 들어 있는 항목을 하나씩 설명해요. 항목 이름은 화면에 보이는 그대로예요. 접었다 편 상자 상태는 기억돼요.</p>
+      <div class="tabs-guide">
+
+        <article class="tab-card">
+          <header><span>캐릭터</span><h3>조사자 시트</h3><p>AI가 연기하는 조사자의 모든 수치가 여기 있어요.</p></header>
+          <dl>
+            <div><dt>조사자 봇카드</dt><dd><strong>봇카드 불러오기</strong>로 카드에 적힌 수치를 가져와요. <strong>능력치 자동 적용</strong>은 AI가 카드를 읽고 능력치와 직업·관심 기능을 채워요. 이때 텍스트 모델을 한 번 불러요.</dd></div>
+            <div><dt>조사자 프로필</dt><dd>이름, 나이, 성별과 사진이에요. 사진을 올리면 왼쪽 사진이 바뀌고, <strong>봇카드 사진으로 복원</strong>으로 되돌려요.</dd></div>
+            <div><dt>능력치와 자원</dt><dd>근력, 건강 같은 8개 능력치와 HP, MP, SAN, 행운이에요.</dd></div>
+            <div><dt>기능 목록</dt><dd>기능을 추가하고 기준치를 정해요. 성공한 기능에는 경험 체크가 남고, <strong>성장 굴림</strong>으로 올릴 수 있어요.</dd></div>
+            <div><dt>연령 보정 · 생성 확정</dt><dd>나이에 따른 보정과 포인트를 확인하고 <strong>생성 확정</strong>을 눌러요. 확정 뒤에도 수정할 수 있어요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>캐릭터</span><h3>페르소나 시트</h3><p>내가 맡는 인물의 CoC 시트예요.</p></header>
+          <dl>
+            <div><dt>페르소나 설정</dt><dd>Marinara 페르소나를 연결해요. 연결하면 내 대사와 행동이 그 이름으로 나가요.</dd></div>
+            <div><dt>페르소나 시트 만들기</dt><dd>조사자 시트와 같은 구성의 시트를 만들어요. <strong>능력치 자동 적용</strong>도 쓸 수 있어요.</dd></div>
+            <div><dt>판정</dt><dd><code>/check 기능명</code>은 기본으로 이 시트로 굴려요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>입력</span><h3>매크로</h3><p>자주 쓰는 명령을 짧은 이름으로 저장해요.</p></header>
+          <dl>
+            <div><dt>명령어 사용법</dt><dd>쓸 수 있는 명령어를 한눈에 볼 수 있어요.</dd></div>
+            <div><dt>명령어와 매크로</dt><dd>이름과 명령어를 적고 <strong>매크로 추가</strong>를 눌러요. 입력창에 <code>#이름</code>으로 실행해요.</dd></div>
+            <div><dt>즐겨찾기 · 실행 미리보기</dt><dd>즐겨찾기한 매크로는 버튼으로 나와요. 미리보기로 결과를 먼저 확인할 수 있어요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>자료</span><h3>핸드아웃</h3><p>조사자에게 건네는 편지, 신문, 사진 같은 자료예요.</p></header>
+          <dl>
+            <div><dt>핸드아웃 추가</dt><dd>제목과 파일(이미지, PDF, 텍스트)을 올려요. 텍스트만 적어도 돼요.</dd></div>
+            <div><dt>PDF 텍스트 추출</dt><dd>PDF 안의 글을 꺼내서 AI가 읽을 수 있게 해요.</dd></div>
+            <div><dt>설명 제안</dt><dd>이미지 핸드아웃의 설명을 AI가 제안해요. <strong>별도 이미지 분석 모델</strong>을 정해 둬야 해요.</dd></div>
+            <div><dt>원본 다운로드</dt><dd>올린 파일을 다시 받아요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>그림</span><h3>삽화</h3><p>이 게임의 그림과 왼쪽 사진을 관리해요.</p></header>
+          <dl>
+            <div><dt>왼쪽 사진 바꾸기</dt><dd>봇카드 사진, 올린 사진, 삽화 중에서 왼쪽에 보일 사진을 골라요.</dd></div>
+            <div><dt>왼쪽 사진 위치</dt><dd>가로·세로 막대로 사진에서 보이는 부분을 옮겨요. 손을 떼면 저장되고, <strong>처음 위치로</strong>로 되돌려요.</dd></div>
+            <div><dt>왼쪽 사진 효과</dt><dd>사진 위에 눈, 비, 안개 효과를 얹어요. <strong>꺼짐</strong>을 누르면 없어져요.</dd></div>
+            <div><dt>이 게임의 삽화</dt><dd>삽화마다 <strong>왼쪽 사진</strong>, <strong>숨기기 · 다시 보이기</strong>, <strong>삭제</strong>가 있어요. 삭제하면 모든 버전 파일까지 지워져요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>인물</span><h3>NPC</h3><p>등장인물을 등록해 두고 바로 연기해요.</p></header>
+          <dl>
+            <div><dt>NPC 관리</dt><dd>이름, 소개, 사진을 등록해요. 주요 인물과 단역을 나눠 관리할 수 있어요.</dd></div>
+            <div><dt>대사 쓰기</dt><dd>입력창에 <code>/as "이름"</code>을 미리 채워 줘요.</dd></div>
+            <div><dt>소개 공개</dt><dd>NPC 소개를 채팅에 공개해서 조사자도 알게 해요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>기록</span><h3>조사 노트</h3><p>조사자가 알게 된 것과 키퍼의 메모를 정리해요.</p></header>
+          <dl>
+            <div><dt>AI가 알게 된 내용</dt><dd>AI 답변이 끝나면 새로 알게 된 사실과 가설이 자동으로 정리돼요.</dd></div>
+            <div><dt>직접 기록</dt><dd>분류를 골라 직접 적어요. <strong>확인된 사실</strong>과 <strong>세션 요약</strong>은 AI에게 공개되고, <strong>키퍼 목표</strong>와 <strong>키퍼 단서</strong>는 비공개예요.</dd></div>
+            <div><dt>확인된 사실이면 채팅에도 공개</dt><dd>켜고 저장하면 그 사실을 채팅에도 장면으로 남겨요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>키퍼</span><h3>시나리오</h3><p>키퍼만 보는 시나리오 준비 공간이에요.</p></header>
+          <dl>
+            <div><dt>시나리오 노트</dt><dd>줄거리, 장소, 단서 계획을 적어 둬요.</dd></div>
+            <div><dt>조사자 비밀 설정 (HO)</dt><dd>조사자만의 비밀을 정해요. AI는 알고 있지만 숨긴 채 연기해요.</dd></div>
+            <div><dt>공개 허락</dt><dd>켜면 조사자가 그 비밀을 드러내도 돼요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>기억</span><h3>기억 서재</h3><p>기억 서재 확장과 연결해요. 확장이 있을 때만 보여요.</p></header>
+          <dl>
+            <div><dt>이 게임 방을 기억 서재로</dt><dd>켜면 이 게임의 대화를 기억 서재로 보내 정리하게 해요. <strong>지금 보내기</strong>로 바로 보내고, AI에게 보낼 최근 대화 수도 여기서 정해요.</dd></div>
+            <div><dt>정리 상태와 버튼</dt><dd>정리 중, 완료, 멈춤, 오류가 표시돼요. 처음에는 <strong>기억 켜고 정리 시작</strong>, 그다음부터는 <strong>이어서 정리</strong>를 눌러요. <strong>정리 멈추기</strong>, <strong>예상 호출 수</strong>(정리에 드는 호출 수를 미리 계산), <strong>기억 끄기</strong>도 있어요.</dd></div>
+            <div><dt>참고할 기억 서재 선택</dt><dd>다른 채팅에서 정리한 기억을 이 게임 시작할 때 참고하게 연결해요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>규칙</span><h3>전투·추격</h3><p>긴박한 장면에 쓰는 규칙 도구예요.</p></header>
+          <dl>
+            <div><dt>비밀 다이스</dt><dd>조사자 몰래 키퍼가 굴리는 주사위예요.</dd></div>
+            <div><dt>이성 판정과 광기</dt><dd>SAN 판정과 손실을 기록해요. <strong>광기 확인 INT 판정</strong>, <strong>키퍼가 광기 종료</strong>로 광기 상태를 다뤄요.</dd></div>
+            <div><dt>체력과 치료</dt><dd>피해와 회복을 기록해요. <strong>빈사 CON 판정</strong>, <strong>자연 회복</strong>이 있어요.</dd></div>
+            <div><dt>교전과 행동 순서</dt><dd>참가자를 DEX 순으로 정렬해요. 사격 준비 +50 DEX, 관통 무기, 탄약 소모를 반영해요.</dd></div>
+            <div><dt>추격 기록 · MP와 마법 비용</dt><dd>추격 위치를 한 칸씩 옮기고 라운드를 넘겨요. 마법 비용이 MP보다 크면 HP로 낼 수 있어요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>키퍼</span><h3>키퍼 기록</h3><p>키퍼만 보는 메모와 AI 전용 지시가 모여요.</p></header>
+          <dl>
+            <div><dt>대기 중인 주사위</dt><dd>굴리기를 기다리는 판정이에요. <strong>결과 대기 해제</strong>나 <strong>판정 요청 취소</strong>를 할 수 있어요.</dd></div>
+            <div><dt>비공개 지시와 메모</dt><dd>저장 방식을 골라요. <strong>다음 AI 응답에만 전달</strong>은 <code>/toai</code>와 같고, <strong>키퍼 전용 메모</strong>는 <code>/w</code>와 같아요. 아직 안 쓰인 지시는 <strong>전달 취소</strong>할 수 있어요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>설정</span><h3>세션·설정</h3><p>연결, 규칙, 저장, 내보내기가 모두 여기 있어요.</p></header>
+          <dl>
+            <div><dt>AI 조사자 설정 · 플레이어 페르소나</dt><dd>모델, 프리셋, 봇카드, 이미지 모델, 내 페르소나를 연결해요. <a href="#setup">처음 설정 순서</a>의 2~4단계예요.</dd></div>
+            <div><dt>캠페인과 세션</dt><dd>세션을 추가하고, <strong>지금 저장</strong>, <strong>캠페인 백업 JSON</strong>, <strong>공개 채팅 JSON</strong>으로 저장해요. 빈 게임에서는 예전 백업을 복원할 수 있어요.</dd></div>
+            <div><dt>세션 마무리</dt><dd>경험 체크된 기능의 성장 굴림, 시나리오 보상 SAN 회복, AI의 세션 요약을 한 번에 해요. 원하면 바로 다음 세션을 시작해요.</dd></div>
+            <div><dt>리플레이 내보내기</dt><dd>공개된 대화와 판정을 책처럼 읽기 좋은 HTML 파일로 저장해요. 키퍼 메모, 비공개 굴림, 조사자 비밀은 빠져요.</dd></div>
+            <div><dt>게임 설정</dt><dd>자동 응답, 이미지 첨부, 행운 소비, 판정 방식을 정해요.</dd></div>
+          </dl>
+        </article>
+
+        <article class="tab-card">
+          <header><span>보관</span><h3>메시지 보관함</h3><p>다시 보고 싶은 메시지를 모아 둬요.</p></header>
+          <dl>
+            <div><dt>북마크</dt><dd>메시지에서 <strong>북마크에 추가</strong>한 것들이 모여요. <strong>메시지로 이동</strong>을 누르면 채팅의 그 자리로 가요.</dd></div>
+          </dl>
+        </article>
+
+      </div>
+    </section>
+
+    <section id="art">
+      <h2>삽화</h2>
+      <p class="intro">고른 장면으로 그림을 그려 채팅에 붙여요. 이미지 생성 연결이 있어야 해요.</p>
+      <ol class="steps">
+        <li><div class="step-body"><div class="step-title">장면 고르기</div><p>채팅 위쪽 삽화 도구에서 장면 선택을 켜고, 그림으로 만들 메시지를 골라요.</p></div></li>
+        <li><div class="step-body"><div class="step-title">그리기</div><p>그림 아이콘을 누르면 <strong>삽화 프롬프트 모델</strong>이 그림용 태그를 쓰고, 이미지 모델이 그려요.</p></div></li>
+        <li><div class="step-body"><div class="step-title">확인하기</div><p>삽화는 고른 마지막 메시지 아래에 붙어요. 누르면 크게 보이고 프롬프트도 볼 수 있어요.</p></div></li>
+      </ol>
+      <div class="pair">
+        <div class="panel">
+          <h3>그림 위 버튼</h3>
+          <ul>
+            <li><strong>다시 그리기</strong> · 장면부터 프롬프트를 새로 써서 다시 그려요. 새 그림은 버전으로 쌓이고, 그림 위에 <code>4/4</code>처럼 지금 보이는 버전과 전체 버전 수가 나와요.</li>
+            <li><strong>숨기기</strong> · 채팅에서만 안 보이게 해요. 파일은 남아요.</li>
+            <li><strong>크게 보기</strong> · 프롬프트를 고쳐 <strong>이 프롬프트로 다시 그리기</strong>, 예전 버전으로 바꾸기, 왼쪽 사진으로 쓰기.</li>
+            <li><strong>완전 삭제</strong> · 삽화 탭에서 해요. 모든 버전 파일까지 지워져요.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>모습이 잘 나오게 하려면</h3>
+          <ul>
+            <li>봇카드와 페르소나의 <strong>이미지용 외모</strong> 태그가 그 인물 구간 맨 앞에 그대로 들어가요.</li>
+            <li>두 사람이 함께 나오면 <code>|</code>로 나뉜 각자의 구간에 들어가서 특징이 섞이지 않아요. 이때 <code>solo</code> 태그는 자동으로 빠져요.</li>
+            <li>이미지 연결의 앞에 붙는 프롬프트(Prompt Prefix)는 모든 그림에 들어가요. 장면과 안 맞는 태그가 없는지 확인해요.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note cost">
+        <span class="tag cost">비용</span>
+        <p><strong>다시 그리기</strong>는 프롬프트를 새로 쓰느라 텍스트 모델을 한 번 더 불러요. 비용 없이 같은 프롬프트로 다시 뽑고 싶으면 크게 보기의 <strong>이 프롬프트로 다시 그리기</strong>를 쓰세요.</p>
+      </div>
+    </section>
+
+    <section id="memory">
+      <h2>기억 서재</h2>
+      <p class="intro">이야기가 길어지면 AI가 앞부분을 잊어요. <strong>기억 서재</strong> 확장이 있으면 지난 이야기를 정리해 두고, 필요한 기억만 꺼내 보내요.</p>
+      <div class="pair">
+        <div class="panel">
+          <h3>켜는 법</h3>
+          <ul>
+            <li>기억 서재 탭 → <strong>이 게임 방을 기억 서재로</strong>를 켜요.</li>
+            <li><strong>AI 답변마다 이어서 정리</strong>를 켜 두면 답변이 끝날 때마다 새 내용을 정리해요.</li>
+            <li>쓰는 프롬프트 프리셋에 <code>{{기억}}</code>이 있어야 기억이 실제로 들어가요.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>상태 표시</h3>
+          <ul>
+            <li><strong>정리 중</strong> · 지금 정리하고 있어요. 몇 번째 묶음인지, 장면으로 묶는 중인지 함께 보여요.</li>
+            <li><strong>정리 완료 · 정리된 기억 있음</strong> · 몇 번 메시지까지, 장면 몇 개로 정리됐는지 보여요.</li>
+            <li><strong>정리를 멈췄어요</strong> · <strong>이어서 정리</strong>를 누르면 멈춘 곳부터 계속해요.</li>
+            <li><strong>오류가 생겼어요</strong> · 이유가 함께 나와요. 오래된 메시지를 고치거나 지워서 생긴 오류면 <strong>처음부터 다시 정리</strong> 버튼이 나와요.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="intro">기억 서재가 지난 이야기를 맡으니, 대화 원문은 최근 몇 개만 보내도 흐름이 이어져요.</p>
+    </section>
+
+    <section id="tokens">
+      <h2>토큰 아끼기</h2>
+      <p class="intro">AI 답변 한 번마다 프롬프트 전체가 모델로 가요. 얼마나 들어가는지 보고 줄일 수 있어요.</p>
+      <div class="pair">
+        <div class="panel"><h3>토큰 칩</h3><p>AI 메시지 옆의 <code>13.7k tok</code> 같은 표시를 누르면 프롬프트 구성이 열려요. 어느 부분이 얼마나 차지하는지 검색하면서 볼 수 있어요.</p></div>
+        <div class="panel"><h3>프리셋 부분만 보내기</h3><p>기본은 <strong>자동으로 (문체만)</strong>이라 문체 부분과 <code>{{기억}}</code>만 보내요. 프리셋 이름 아래에서 직접 고를 수도 있어요.</p></div>
+        <div class="panel"><h3>최근 대화 수 줄이기</h3><p>기억 서재를 쓰면 원문을 적게 보내도 돼요. 기억 서재 탭에서 정해요.</p></div>
+        <div class="panel"><h3>규칙은 한 번만</h3><p>CoC 규칙 설명은 프롬프트에 한 번만 들어가요. 따로 할 일은 없어요.</p></div>
+      </div>
+    </section>
+
+    <section id="messages">
+      <h2>메시지 다루기</h2>
+      <div class="pair">
+        <div class="panel">
+          <h3>수정 · 삭제 · 북마크</h3>
+          <ul>
+            <li>메시지 위 버튼으로 수정, 복사, 삭제, 북마크를 해요.</li>
+            <li>삭제하기 전에 무엇을 지우는지 확인 창이 떠요.</li>
+            <li>AI 답변이 마음에 안 들면 다시 생성할 수 있어요.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>글자 꾸미기</h3>
+          <ul>
+            <li><code>**굵게**</code> · <code>*기울임*</code> · <code>***굵게 기울임***</code></li>
+            <li><code>~~취소선~~</code> · <code>`코드`</code></li>
+            <li>간단한 HTML 태그는 안전한 것만 적용돼요.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>설치와 업데이트</h2>
+      <p class="intro">공유 패키지 <code>marinara-coc7</code> 폴더 하나로 설치하고 지워요. git으로 설치한 Marinara(start.bat으로 실행)에서 써요.</p>
+      <ol class="steps">
+        <li><div class="step-body"><div class="step-title">Marinara 끄기</div><p>설치하는 동안에는 Marinara가 꺼져 있어야 해요.</p></div></li>
+        <li><div class="step-body"><div class="step-title">폴더 넣기</div><p><code>marinara-coc7</code> 폴더를 통째로 <code>Marinara-Engine</code> 폴더 안에 넣어요.</p></div></li>
+        <li><div class="step-body"><div class="step-title">설치 실행</div><p><code>CoC 설치.bat</code>을 더블클릭해요. 빌드까지 1~2분 걸려요. <strong>[완료]</strong>가 나오면 Marinara를 켜요.</p></div></li>
+      </ol>
+      <div class="pair">
+        <div class="panel">
+          <h3>Marinara를 업데이트한 뒤</h3>
+          <ul>
+            <li>CoC 메뉴가 안 보이면 Marinara를 끄고 <code>CoC 다시 적용.bat</code>을 실행해요.</li>
+            <li>"이 Marinara 버전에는 CoC 연결 부분이 맞지 않아요"가 나오면 아무것도 바뀌지 않은 상태예요. 새 버전 패키지를 받아 주세요.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>지우기</h3>
+          <ul>
+            <li><code>CoC 제거.bat</code>을 실행하면 CoC 파일과 연결 부분을 빼고 다시 빌드해요.</li>
+            <li>게임 기록은 지우지 않고 남겨 둬요.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="trouble">
+      <h2>문제가 생기면</h2>
+      <div class="faq">
+        <details>
+          <summary>삽화가 "Gallery image prompt compilation failed"로 실패해요</summary>
+          <div><p>문구의 <code>:</code> 뒤가 실제 이유예요. 대개 삽화 프롬프트를 쓰는 텍스트 모델 쪽 문제(잔액 부족, 서버 오류)예요.</p><p>세션·설정 → AI 조사자 설정 → <strong>삽화 프롬프트 모델</strong>을 다른 연결로 바꾸거나, 잠시 뒤 다시 눌러 보세요.</p></div>
+        </details>
+        <details>
+          <summary>그림에 엉뚱한 인물이 나오거나 모습이 섞여요</summary>
+          <div><p>이미지 연결의 앞에 붙는 프롬프트(Prompt Prefix)를 확인해 보세요. 모든 그림에 들어가는 태그라서, 장면과 맞지 않는 태그가 있으면 계속 영향을 줘요.</p><p>이미지용 외모 태그의 가중치 문법(<code>2::태그::</code>)이 깨져 있지 않은지도 확인해 보세요.</p></div>
+        </details>
+        <details>
+          <summary>AI가 예전 일을 기억하지 못해요</summary>
+          <div><p>기억 서재 탭에서 이 게임 방이 켜져 있는지, 정리 상태가 <strong>완료</strong>인지 확인해요.</p><p>쓰는 프리셋에 <code>{{기억}}</code>이 들어 있어야 정리한 기억이 프롬프트에 들어가요.</p></div>
+        </details>
+        <details>
+          <summary>업데이트 뒤 CoC 대신 일반 게임 화면이 나와요</summary>
+          <div><p>Marinara를 끄고 <code>CoC 다시 적용.bat</code>을 실행하세요. 이미 들어가 있는 부분은 그대로 두고 빠진 부분만 다시 넣어요.</p></div>
+        </details>
+        <details>
+          <summary>설치 창에 [실패]가 나와요</summary>
+          <div><p>나온 문구를 그대로 알려 주세요. 바꾸지 않고 상태만 보려면 <code>marinara-coc7</code> 폴더에서 명령 창을 열고 <code>node install.mjs check</code>를 실행하면 돼요.</p></div>
+        </details>
+      </div>
+    </section>
+
+    <footer>Marinara Engine 2.5.2 기준으로 만든 CoC 7th TRPG 1.0.2 설명서예요.</footer>
+  </main>
+</div>
+</body>
+</html>

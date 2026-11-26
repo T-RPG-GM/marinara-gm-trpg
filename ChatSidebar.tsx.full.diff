@@ -1,0 +1,201 @@
+diff --git a/packages/client/src/components/layout/ChatSidebar.tsx b/packages/client/src/components/layout/ChatSidebar.tsx
+index e6981efdc..f3b9fceed 100644
+--- a/packages/client/src/components/layout/ChatSidebar.tsx
++++ b/packages/client/src/components/layout/ChatSidebar.tsx
+@@ -9,6 +9,7 @@ import {
+   MessageSquareText,
+   Search,
+   Trash2,
++  Pencil,
+   Plus,
+   Check,
+   Download,
+@@ -33,7 +34,7 @@ import {
+   Activity,
+ } from "lucide-react";
+ import { openActivityOverview, openGlobalSearch } from "../../lib/chat-insights";
+-import { useBulkExportChats, useChats, useCreateChat, useDeleteChat, useDeleteChatGroup } from "../../hooks/use-chats";
++import { useBulkExportChats, useChats, useCreateChat, useDeleteChat, useDeleteChatGroup, useUpdateChat } from "../../hooks/use-chats";
+ import { useChatPresets, useApplyChatPreset } from "../../hooks/use-chat-presets";
+ import { useConnections } from "../../hooks/use-connections";
+ import {
+@@ -47,13 +48,15 @@ import {
+ import { useCharacterSummaries } from "../../hooks/use-characters";
+ import { handleFolderRenameKeyDown, useFolderRenameGesture } from "../../hooks/use-folder-rename-gesture";
+ import { useChatStore } from "../../stores/chat.store";
+-import { confirmNonEmptyFolderDelete, showConfirmDialog } from "../../lib/app-dialogs";
++import { confirmNonEmptyFolderDelete, showConfirmDialog, showPromptDialog } from "../../lib/app-dialogs";
+ import { isMobileShellViewport, selectSidebarShown, useUIStore, type UserStatus } from "../../stores/ui.store";
+ import { cn, getAvatarCropStyle } from "../../lib/utils";
+ import { chatBackgroundMetadataToUrl } from "../../lib/backgrounds";
+ import { formatRelativeContact } from "../../lib/relative-time";
+ import { ChatRowPeek } from "./ChatRowPeek";
++import { HomeNewChatLauncher } from "../chat/HomeNewChatLauncher";
+ import { Fragment, lazy, Suspense, useState, useCallback, useMemo, useRef, useEffect } from "react";
++import type { DragEvent as ReactDragEvent } from "react";
+ import { useTouchFolderDrag } from "../../hooks/use-touch-folder-drag";
+ import { usePresenceClock } from "../../hooks/use-presence-clock";
+ import { usePanelKeyboardFocus } from "./use-panel-keyboard-focus";
+@@ -252,6 +255,29 @@ export function ChatSidebar() {
+   const { data: chatPresetsData } = useChatPresets();
+   const applyChatPreset = useApplyChatPreset();
+   const deleteChat = useDeleteChat();
++  const updateChat = useUpdateChat();
++  // Game chats open their own screen instead of the chat settings drawer, so the list renames them.
++  const renameGameChat = useCallback(
++    async (chatId: string, currentName: string) => {
++      const next = (
++        await showPromptDialog({
++          title: "게임 이름 바꾸기",
++          message: "목록에 보일 새 이름을 입력하세요.",
++          defaultValue: currentName,
++          placeholder: "게임 이름",
++          confirmLabel: "저장",
++          cancelLabel: "취소",
++          tone: "accent",
++        })
++      )?.trim();
++      if (!next || next === currentName) return;
++      updateChat.mutate(
++        { id: chatId, name: next.slice(0, 200) },
++        { onError: () => toast.error("게임 이름을 바꾸지 못했습니다.") },
++      );
++    },
++    [updateChat],
++  );
+   const deleteChatGroup = useDeleteChatGroup();
+   const bulkExportChats = useBulkExportChats();
+   const activeChatId = useChatStore((s) => s.activeChatId);
+@@ -1474,6 +1500,22 @@ export function ChatSidebar() {
+             )
+           )}
+ 
++          {/* Rename button — game chats only */}
++          {!multiSelectMode && chat.mode === "game" && (
++            <button
++              type="button"
++              aria-label={`${displayName} 이름 바꾸기`}
++              title="이름 바꾸기"
++              onClick={(e) => {
++                e.stopPropagation();
++                void renameGameChat(chat.id, displayName);
++              }}
++              className="shrink-0 rounded-md p-1 text-[var(--muted-foreground)] opacity-0 transition-all hover:bg-[var(--accent)] hover:text-[var(--foreground)] group-hover:opacity-100 max-md:opacity-100"
++            >
++              <Pencil size="0.75rem" />
++            </button>
++          )}
++
+           {/* Delete button */}
+           {!multiSelectMode && (
+             <button
+@@ -1604,18 +1646,28 @@ export function ChatSidebar() {
+           className="hidden"
+           onChange={handleImportChatFile}
+         />
+-        <button
+-          onClick={handleNewChatFromTab}
+-          disabled={createChat.isPending}
+-          className={cn(
+-            "mari-chrome-control mari-chrome-control--primary mari-chat-mode-action flex-1 text-xs",
+-            activeModeConfig.logoModeClass,
+-          )}
+-          title={t(`navigation.chatSidebar.new.${activeTab}`)}
+-          aria-label={t(`navigation.chatSidebar.new.${activeTab}`)}
+-        >
+-          <Plus size="0.8125rem" className="mari-rgb-static-icon" />
+-        </button>
++        {activeTab === "game" ? (
++          <HomeNewChatLauncher
++            mode="game"
++            className={cn("mari-chrome-control--primary mari-chat-mode-action flex-1", activeModeConfig.logoModeClass)}
++            ariaLabel={t("navigation.chatSidebar.new.game")}
++          >
++            <Plus size="0.8125rem" className="mari-rgb-static-icon" />
++          </HomeNewChatLauncher>
++        ) : (
++          <button
++            onClick={handleNewChatFromTab}
++            disabled={createChat.isPending}
++            className={cn(
++              "mari-chrome-control mari-chrome-control--primary mari-chat-mode-action flex-1 text-xs",
++              activeModeConfig.logoModeClass,
++            )}
++            title={t(`navigation.chatSidebar.new.${activeTab}`)}
++            aria-label={t(`navigation.chatSidebar.new.${activeTab}`)}
++          >
++            <Plus size="0.8125rem" className="mari-rgb-static-icon" />
++          </button>
++        )}
+         <button
+           onClick={() => chatImportInputRef.current?.click()}
+           disabled={isImportingChat}
+@@ -1818,17 +1870,30 @@ export function ChatSidebar() {
+                 `navigation.chatSidebar.empty.${searchQuery.trim() || activeTag ? "filtered" : "initial"}.${activeTab}`,
+               )}
+             </p>
+-            <button
+-              onClick={handleNewChatFromTab}
+-              disabled={createChat.isPending}
+-              className={cn(
+-                "mari-chrome-control mari-chrome-control--compact mari-chat-mode-action mt-1",
+-                activeModeConfig.logoModeClass,
+-              )}
+-            >
+-              <span>+</span>
+-              {t(`navigation.chatSidebar.new.${activeTab}`)}
+-            </button>
++            {activeTab === "game" ? (
++              <HomeNewChatLauncher
++                mode="game"
++                className={cn(
++                  "mari-chrome-control--compact mari-chat-mode-action mt-1",
++                  activeModeConfig.logoModeClass,
++                )}
++              >
++                <span>+</span>
++                {t("navigation.chatSidebar.new.game")}
++              </HomeNewChatLauncher>
++            ) : (
++              <button
++                onClick={handleNewChatFromTab}
++                disabled={createChat.isPending}
++                className={cn(
++                  "mari-chrome-control mari-chrome-control--compact mari-chat-mode-action mt-1",
++                  activeModeConfig.logoModeClass,
++                )}
++              >
++                <span>+</span>
++                {t(`navigation.chatSidebar.new.${activeTab}`)}
++              </button>
++            )}
+           </div>
+         )}
+ 
+@@ -2150,22 +2215,22 @@ function FolderRow({
+       data-chat-folder-id={folder.id}
+       dragListener={false}
+       as="div"
+-      onDragEnter={(event) => {
++      onDragEnter={(event: ReactDragEvent<HTMLDivElement>) => {
+         if (!draggedChatId) return;
+         event.preventDefault();
+         setIsDropTarget(true);
+       }}
+-      onDragOver={(event) => {
++      onDragOver={(event: ReactDragEvent<HTMLDivElement>) => {
+         if (!draggedChatId) return;
+         event.preventDefault();
+         event.dataTransfer.dropEffect = "move";
+       }}
+-      onDragLeave={(event) => {
++      onDragLeave={(event: ReactDragEvent<HTMLDivElement>) => {
+         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+           setIsDropTarget(false);
+         }
+       }}
+-      onDrop={(event) => {
++      onDrop={(event: ReactDragEvent<HTMLDivElement>) => {
+         if (!draggedChatId) return;
+         event.preventDefault();
+         event.stopPropagation();

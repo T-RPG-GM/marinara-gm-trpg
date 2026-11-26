@@ -1,0 +1,11 @@
+{
+  "name": "마리나라 GM 전용 TRPG",
+  "version": "1.1.42",
+  "builtFor": "Marinara Engine 2.5.2 (fc0333c3f)",
+  "exclude": [
+    "packages/client/src/components/game/coc7/",
+    "packages/server/src/routes/coc7-game.routes.ts",
+    "packages/server/src/routes/coc7-prices.ts"
+  ],
+  "ownedDirs": ["packages/client/src/components/game/coc7"]
+}
